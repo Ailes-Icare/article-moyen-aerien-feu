@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "genere": "2026-07-22",
+  "labelPositions": {
+    "leluc": {
+      "x": 21.6,
+      "y": 9.4,
+      "anchor": "middle"
+    },
+    "cannes": {
+      "x": 23.6,
+      "y": 8.5,
+      "anchor": "middle"
+    },
+    "nice": {
+      "x": 14.9,
+      "y": -1.7,
+      "anchor": "middle"
+    },
+    "biogema": {
+      "x": 1.2,
+      "y": 16.7,
+      "anchor": "middle"
+    },
+    "aix": {
+      "x": 17.1,
+      "y": -9.9,
+      "anchor": "middle"
+    },
+    "marseille": {
+      "x": -50.6,
+      "y": -0.6,
+      "anchor": "middle"
+    },
+    "ales": {
+      "x": -15.7,
+      "y": -2.3,
+      "anchor": "middle"
+    },
+    "nimes": {
+      "x": 26.6,
+      "y": -8.6,
+      "anchor": "middle"
+    },
+    "beziers": {
+      "x": 17.5,
+      "y": 15.5,
+      "anchor": "middle"
+    },
+    "perpignan": {
+      "x": 13.7,
+      "y": 14.9,
+      "anchor": "middle"
+    },
+    "hyeres": {
+      "x": 18.7,
+      "y": 14.2,
+      "anchor": "middle"
+    },
+    "carcassonne": {
+      "x": -2.6,
+      "y": 15.3,
+      "anchor": "middle"
+    },
+    "auch": {
+      "x": -1.4,
+      "y": 16.9,
+      "anchor": "middle"
+    },
+    "bordeaux": {
+      "x": 4.4,
+      "y": -11.9,
+      "anchor": "middle"
+    },
+    "cahors": {
+      "x": -3.2,
+      "y": -12.1,
+      "anchor": "middle"
+    },
+    "vannes": {
+      "x": 1.1,
+      "y": -13,
+      "anchor": "middle"
+    },
+    "albert": {
+      "x": 6.5,
+      "y": 16,
+      "anchor": "middle"
+    },
+    "epinal": {
+      "x": 0.5,
+      "y": -11,
+      "anchor": "middle"
+    }
+  },
+  "colors": {
+    "retardant": "#eb0046",
+    "mobile": "#ffb042",
+    "eau": "#00aaff",
+    "travaux": "#40b573",
+    "ferme": "#324258",
+    "production": "#d946ef"
+  },
+  "fontSize": "9",
+  "hiddenTypes": [],
+  "carte3": {
+    "mode": "evenement",
+    "fond": 1,
+    "start": 1975,
+    "end": 2026,
+    "step": 1,
+    "holdFirst": 1500,
+    "holdMid": 600,
+    "holdLast": 3000,
+    "holdEvent": 2500,
+    "labelFrames": 0,
+    "loop": false,
+    "ghost": true
+  }
+}

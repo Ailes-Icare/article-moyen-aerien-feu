@@ -1,0 +1,688 @@
+{
+  "meta": {
+    "version": "2026-07-22",
+    "objet": "Chronologie du réseau français des pélicandromes : création, changements de statut, commentaires annuels.",
+    "convention": {
+      "sites.<id>.start": "année (nombre) ou date ISO ou null si non publiée (site affiché dès la 1re frame)",
+      "sites.<id>.type": "retardant | mobile | eau | travaux | ferme | production (type à la création)",
+      "sites.<id>.changes": "liste { year, type, motif } ; une fermeture est un changement vers 'ferme', jamais une suppression",
+      "verifie": "true = date confirmée par une source primaire ou de presse identifiée ; false = non vérifié",
+      "commentaires.<annee>.evenements[].kind": "ouverture | mobile_vers_fixe | fermeture | travaux | construction | livraison | usine_ouverture | usine_fermeture | contexte"
+    },
+    "avertissement": "Les entrées 'verifie: false' proviennent du jeu de données initial du dashboard et n'ont pas pu être confirmées en ligne. Aucune date n'a été inventée : ce qui n'est pas sourcé est marqué null ou verifie: false."
+  },
+  "sites": {
+    "limoges": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Station retardant fixe la plus septentrionale du réseau méridional (F. Marsaly, 09-27.fr, 2021). Date de création non publiée."
+    },
+    "bordeaux": {
+      "start": 1985,
+      "type": "retardant",
+      "changes": [],
+      "verifie": true,
+      "source": "SDIS 11 : Bordeaux, Marignane, Bastia et Carcassonne accueillent un détachement de 2 ABE chaque été depuis 1985. Ouvert 24h/24 (Armée de l'air, 2022)."
+    },
+    "cahors": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Cité parmi les stations fixes hors arc méditerranéen (F. Marsaly, 2021). Date non publiée."
+    },
+    "carcassonne": {
+      "start": 1985,
+      "type": "retardant",
+      "changes": [],
+      "verifie": true,
+      "source": "SDIS 11 (sdis11.fr) : détachement de 2 avions chaque été depuis 1985."
+    },
+    "perpignan": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Date non publiée."
+    },
+    "beziers": {
+      "start": 2014,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Base des ABEL du SDIS 34, également utilisée par les moyens nationaux (F. Marsaly, 2021). L'année 2014 provient du jeu de données initial et n'a pas été confirmée."
+    },
+    "nimes": {
+      "start": 2017,
+      "type": "retardant",
+      "changes": [],
+      "verifie": true,
+      "source": "BASC de Nîmes-Garons inaugurée en 2017 ; seul pélicandrome maintenu opérationnel toute l'année, 4 points retardant + 2 eau. Prudence : un pélicandrome existait à Nîmes avant la BASC."
+    },
+    "aubenas": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Date non publiée."
+    },
+    "valence": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Équipiers du SDIS 26 à l'entraînement avec Tracker en 2018 (F. Marsaly). Date de création non publiée."
+    },
+    "marseille": {
+      "start": 1985,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 2021,
+          "type": "travaux",
+          "motif": "déclaration des travaux : appel d'offres pour de nouvelles installations"
+        },
+        {
+          "year": 2024,
+          "type": "retardant",
+          "motif": "nouveau pélicandrome fonctionnel (été 2024), inauguré le 11 octobre 2024"
+        }
+      ],
+      "verifie": true,
+      "source": "Détachement depuis 1985 (SDIS 11) ; BASC basée à Marignane jusqu'en 2017 ; nouvelle station inaugurée le 11/10/2024, 2,7 M€ cofinancés (Pompiers 13). Chantier proprement dit démarré mi-2023 (« débutée il y a un peu plus d'un an » en octobre 2024) : la phase 2021-2023 est une phase de projet, la phase 2023-2024 une phase de travaux ; les deux partagent la même catégorie « en projet / travaux »."
+    },
+    "hyeres": {
+      "start": 1972,
+      "type": "mobile",
+      "changes": [
+        {
+          "year": 2023,
+          "type": "travaux",
+          "motif": "notification des marchés (juillet) et démarrage du chantier (septembre)"
+        },
+        {
+          "year": 2024,
+          "type": "retardant",
+          "motif": "pélicandrome permanent inauguré le 18 juillet 2024"
+        }
+      ],
+      "verifie": true,
+      "source": "Station mobile présente sur la BAN depuis 1972 ; pélicandrome permanent inauguré le 18/07/2024, coût 4 874 000 € (TPBM/mesinfos, AD RCSC-CCFF 83, préfecture du Var)."
+    },
+    "cannes": {
+      "start": 1998,
+      "type": "retardant",
+      "changes": [],
+      "verifie": true,
+      "source": "Ouvert à l'été 1998 en remplacement de Nice ; capacité ~100 m³, 2 avions simultanés (F. Marsaly)."
+    },
+    "bastia": {
+      "start": 1985,
+      "type": "retardant",
+      "changes": [],
+      "verifie": true,
+      "source": "SDIS 11 : détachement de 2 avions chaque été depuis 1985 ; équipe PEL du SIS 2B (34 personnels)."
+    },
+    "ajaccio": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Date non publiée."
+    },
+    "solenzara": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Base aérienne 126. Date non publiée."
+    },
+    "figari": {
+      "start": null,
+      "type": "retardant",
+      "changes": [],
+      "verifie": false,
+      "source": "Bretelle du pélicandrome renforcée lors des travaux de piste de 2019 (Wikipédia / CCI). Date de création non publiée."
+    },
+    "epinal": {
+      "start": 2021,
+      "type": "mobile",
+      "changes": [
+        {
+          "year": 2025,
+          "type": "retardant",
+          "motif": "station fixe eau + retardant"
+        }
+      ],
+      "verifie": true,
+      "source": "Pélicandrome de la zone Est depuis le printemps 2021 (test Dash le 19/04/2021) ; « le pélicandrome est complété par une station fixe en eau et retardant » en 2025 (grandes dates de l'aéroport d'Épinal-Mirecourt ; préfecture des Vosges, essai du 22/04/2025)."
+    },
+    "chateauroux": {
+      "start": 2020,
+      "type": "travaux",
+      "changes": [
+        {
+          "year": 2022,
+          "type": "eau",
+          "motif": "mise en service, eau seule"
+        },
+        {
+          "year": 2024,
+          "type": "retardant",
+          "motif": "cuve de retardant de 30 m³"
+        }
+      ],
+      "verifie": true,
+      "source": "Projet annoncé par la presse à l'été 2020 dans le cadre du plan post-feux de 2021 — phase « en projet » de 2020 à 2022. Créé en 2022 (eau seule) ; cuve retardant 30 m³ installée en juillet 2024, 12 pompiers formés (F. Marsaly ; ICI/France Bleu Berry)."
+    },
+    "angers": {
+      "start": 2020,
+      "type": "mobile",
+      "changes": [],
+      "verifie": true,
+      "source": "Pélicandrome mobile déployé pour l'été 2020 ; premier remplissage opérationnel le 14/09/2020 (Milan 76) (F. Marsaly)."
+    },
+    "niort": {
+      "start": 2026,
+      "type": "mobile",
+      "changes": [],
+      "verifie": true,
+      "source": "Décision du ministère de l'Intérieur au printemps 2026, annonce sur site le 12/05/2026 ; 2 cuves de 30 m³ (eau / retardant) installées avant l'été (Ville de Niort, France 3 Nouvelle-Aquitaine)."
+    },
+    "tours": {
+      "start": 2018,
+      "type": "mobile",
+      "changes": [],
+      "verifie": true,
+      "source": "Première expérimentation française de pélicandrome mobile sur la BA 705 en 2018 (F. Marsaly)."
+    },
+    "albert": {
+      "start": 2021,
+      "type": "mobile",
+      "changes": [],
+      "verifie": false,
+      "source": "CONTRADICTION DE SOURCES : France Bleu Picardie écrit « depuis 2021, le seul pélicandrome au nord de Paris » ; le jeu de données initial indiquait 2020. La réponse ministérielle de 2023 (QE 6024) confirme l'aménagement sans donner l'année."
+    },
+    "mtdemarsan": {
+      "start": 2023,
+      "type": "mobile",
+      "changes": [],
+      "verifie": true,
+      "source": "Station mobile transférée de Pau (installée depuis le 01/07/2023) vers la BA 118 le 01/08/2023 (CNEWS). Depuis 2023 l'installation alterne entre Mont-de-Marsan et Pau-Uzein ; maintien confirmé le 06/02/2026 par les préfets de zone Sud-Ouest."
+    },
+    "vannes": {
+      "start": 2016,
+      "type": "eau",
+      "changes": [],
+      "verifie": true,
+      "source": "Seul pélicandrome « uniquement à l'eau » de la fiche thématique DGSCGC de juin 2020. Zone d'entraînement inaugurée en 2016 avec les Tracker ; remplissage à l'eau seule, formation annuelle des équipiers PEL du SDIS 56 (F. Marsaly, SDIS 56) — dernière session le 2 juin 2026 avec un Canadair. Site également engagé en opération : deux Air Tractor auraient opéré depuis Vannes sur l'incendie de Trignac (19 juillet 2026), avec environ 1 h de rotation — témoignage direct, non confirmé par la presse régionale qui mentionne Angers comme base de départ des deux appareils."
+    },
+    "saint-etienne": {
+      "start": null,
+      "type": "eau",
+      "changes": [
+        {
+          "year": 2025,
+          "type": "mobile",
+          "motif": "dotation d'une remorque de retardant (40 000 L)"
+        }
+      ],
+      "verifie": true,
+      "source": "Remorque du SDIS 42 permettant le remplissage à l'eau depuis un poteau d'incendie, anciennement utilisée depuis Bron, Le Puy ou Vichy. ABSENT de la liste officielle DGSCGC de juin 2020 (22 sites) : le site n'y figure pas encore, sa reconnaissance est postérieure (cité en 2023 dans la réponse ministérielle QE 6024 parmi les aménagements initiés). Date de création non publiée. Doté de produit retardant en juin 2025 (remorque de 40 000 L)."
+    },
+    "rodez": {
+      "start": 2026,
+      "type": "mobile",
+      "changes": [],
+      "verifie": true,
+      "source": "Pélicandrome mobile inauguré le 17/06/2026 à l'aéroport de Rodez-Aveyron, armé par 12 sapeurs-pompiers du SDIS 12 ; premier engagement sur l'incendie de Nant le 24/06/2026 ; installation définitive (> 1 M€) évoquée d'ici deux ans (France 3 Occitanie, 12actu, Média 12)."
+    },
+    "nice": {
+      "start": 1977,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 1998,
+          "type": "ferme",
+          "motif": "délaissé après la saison 1997 au profit de Cannes"
+        }
+      ],
+      "verifie": true,
+      "source": "Créé en 1977, délaissé après la saison 1997, Cannes ouvrant l'été suivant (F. Marsaly)."
+    },
+    "aix": {
+      "start": 1985,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 2021,
+          "type": "ferme",
+          "motif": "fermeture bornée entre juin 2020 (encore listé par la DGSCGC) et juillet 2021 (donné comme fermé) — année retenue par défaut, non confirmée"
+        }
+      ],
+      "verifie": false,
+      "source": "Créé en 1985. Encore présent comme pélicandrome « retardant et eau » sur la fiche thématique DGSCGC de juin 2020 ; donné comme fermé par F. Marsaly en juillet 2021. La fermeture se situe donc entre ces deux dates : 2021 est une valeur retenue par défaut dans cette fourchette, pas une date sourcée. À ne pas confondre avec le site de production Biogema voisin."
+    },
+    "ales": {
+      "start": null,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 2020,
+          "type": "ferme",
+          "motif": "arrêt de fait après le retrait des Tracker : piste trop courte pour les Dash"
+        }
+      ],
+      "verifie": true,
+      "source": "F. Marsaly (2021) : le retrait des Tracker en 2020 a entraîné de facto l'arrêt d'Alès. Date de création non publiée."
+    },
+    "leluc": {
+      "start": null,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 2020,
+          "type": "ferme",
+          "motif": "arrêt de fait après le retrait des Tracker (Le Cannet-des-Maures / Le Luc)"
+        }
+      ],
+      "verifie": true,
+      "source": "F. Marsaly (2021). Date de création non publiée."
+    },
+    "calvi": {
+      "start": null,
+      "type": "retardant",
+      "changes": [
+        {
+          "year": 2023,
+          "type": "retardant",
+          "motif": "travaux de mise aux normes et d'élargissement achevés ; pélicandrome armé le 10 juillet"
+        }
+      ],
+      "verifie": true,
+      "source": "Listé comme pélicandrome « retardant et eau » sur la fiche thématique DGSCGC de juin 2020 : le statut « en travaux » du jeu de données initial n'est pas confirmé par ce document. Travaux de mise aux normes et d'élargissement financés à 100 % par la Collectivité de Corse, site armé le 10 juillet 2023 (SIS 2B). Date de création initiale non publiée."
+    },
+    "biogema": {
+      "start": 1984,
+      "type": "production",
+      "changes": [],
+      "verifie": false,
+      "source": "Biogema indique sur son site avoir été fondée en 1984 ; le Fire-Trol 931 a été introduit en France en 1982. L'entité juridique BIOGEMA (SIREN 394575070) est immatriculée en 1994 : l'année 1984 est celle revendiquée par l'entreprise, pas une date d'immatriculation."
+    },
+    "auch": {
+      "start": 2026,
+      "type": "travaux",
+      "changes": [],
+      "verifie": true,
+      "source": "Projet de déplacement du pélicandrome mobile de Mont-de-Marsan vers l'aéroport d'Auch-Lamothe. Deuxième visite technique le 2 février 2026 (préfecture du Gers, département, état-major de zone Sud, SDIS 32), après une première visite en 2025 qui a choisi l'emplacement. Implantation provisoire évoquée pour l'été 2026, pérennisation ensuite. Statut : à l'étude — le site n'est pas confirmé opérationnel (France 3 Occitanie, 02/02/2026 ; question écrite au Sénat, 12/02/2026)."
+    }
+  },
+  "commentaires": {
+    "1972": {
+      "evenements": [
+        {
+          "site": "hyeres",
+          "kind": "ouverture",
+          "texte": "Une station mobile de ravitaillement est installée sur la base d'aéronautique navale de Hyères. Elle restera mobile pendant 52 ans.",
+          "source": "TPBM / mesinfos.fr, 19/07/2024",
+          "verifie": true
+        }
+      ]
+    },
+    "1977": {
+      "evenements": [
+        {
+          "site": "nice",
+          "kind": "ouverture",
+          "texte": "Création du pélicandrome de l'aéroport de Nice.",
+          "source": "F. Marsaly, 09-27.fr",
+          "verifie": true
+        }
+      ]
+    },
+    "1982": {
+      "evenements": [
+        {
+          "site": null,
+          "kind": "contexte",
+          "texte": "Introduction en France du retardant Fire-Trol 931 (polyphosphate d'ammonium additionné d'oxyde de fer). Il ne s'agit pas de l'apparition du retardant en France — celui-ci est employé depuis les années 1960 — mais de l'arrivée du produit qui deviendra le standard national et sera fabriqué à Aix-les-Milles.",
+          "source": "ICL Biogema ; rescue18.com pour l'antériorité de l'usage du retardant",
+          "verifie": true
+        }
+      ]
+    },
+    "1984": {
+      "evenements": [
+        {
+          "site": "biogema",
+          "kind": "usine_ouverture",
+          "texte": "Fondation de Biogema (Aix-les-Milles), unique site français de production du retardant. Année revendiquée par l'entreprise ; l'immatriculation RCS date de 1994.",
+          "source": "biogema.com",
+          "verifie": false
+        }
+      ]
+    },
+    "1985": {
+      "evenements": [
+        {
+          "kind": "ouverture",
+          "texte": "Bordeaux-Mérignac, Carcassonne, Marignane et Bastia accueillent désormais chaque été un détachement de deux avions bombardiers d'eau : ce sont les quatre stations armées en permanence pendant la saison.",
+          "source": "SDIS 11",
+          "verifie": true,
+          "sites": [
+            "bordeaux",
+            "carcassonne",
+            "marseille",
+            "bastia"
+          ]
+        },
+        {
+          "site": "aix",
+          "kind": "ouverture",
+          "texte": "Création du pélicandrome d'Aix-les-Milles, distinct de l'usine Biogema voisine.",
+          "source": "F. Marsaly",
+          "verifie": true
+        }
+      ]
+    },
+    "1998": {
+      "evenements": [
+        {
+          "site": "nice",
+          "kind": "fermeture",
+          "texte": "Nice est délaissé après la saison 1997.",
+          "source": "F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "cannes",
+          "kind": "ouverture",
+          "texte": "Ouverture du pélicandrome de Cannes à l'été 1998 en remplacement de Nice : capacité d'environ 100 m³, deux avions simultanés.",
+          "source": "F. Marsaly",
+          "verifie": true
+        }
+      ]
+    },
+    "2014": {
+      "evenements": [
+        {
+          "site": "beziers",
+          "kind": "ouverture",
+          "texte": "Béziers-Vias, base des avions ABEL du SDIS 34, également ouverte aux moyens nationaux. Année non confirmée par une source en ligne.",
+          "source": "jeu de données initial",
+          "verifie": false
+        }
+      ]
+    },
+    "2016": {
+      "evenements": [
+        {
+          "site": "vannes",
+          "kind": "ouverture",
+          "texte": "Inauguration de la zone d'entraînement de Vannes-Meucon avec les Tracker : remplissage à l'eau seule, formation annuelle des équipiers PEL du SDIS 56.",
+          "source": "F. Marsaly / aéroport de Vannes",
+          "verifie": true
+        }
+      ]
+    },
+    "2017": {
+      "evenements": [
+        {
+          "site": "nimes",
+          "kind": "livraison",
+          "texte": "Mise en service de la base aérienne de la Sécurité civile de Nîmes-Garons : 4 points de ravitaillement retardant et 2 en eau, grilles de reprise et recyclage du produit. Seul pélicandrome opérationnel toute l'année.",
+          "source": "F. Marsaly / DGSCGC",
+          "verifie": true
+        },
+        {
+          "site": "marseille",
+          "kind": "contexte",
+          "texte": "Départ de la base des avions de Marignane vers Nîmes ; le pélicandrome de Marignane reste utilisé au milieu d'une base désormais déserte.",
+          "source": "F. Marsaly",
+          "verifie": true
+        }
+      ]
+    },
+    "2018": {
+      "evenements": [
+        {
+          "site": "tours",
+          "kind": "ouverture",
+          "texte": "Première expérimentation française de pélicandrome mobile sur la base aérienne 705 de Tours : un camion-citerne de prémélange installé près d'un poteau d'incendie.",
+          "source": "F. Marsaly",
+          "verifie": true
+        }
+      ]
+    },
+    "2020": {
+      "evenements": [
+        {
+          "site": null,
+          "kind": "contexte",
+          "texte": "Juin 2020 : la DGSCGC recense 22 pélicandromes, dont 17 permanents — 21 en métropole plus Saint-Pierre à La Réunion. La nomenclature officielle ne connaît que deux catégories : « retardant et eau » (21 sites) et « uniquement à l'eau » (Vannes). Aix-les-Milles, Alès et Le Luc y figurent encore ; Angers, Tours, Albert, Saint-Étienne et Châteauroux n'y sont pas.",
+          "source": "Fiche thématique feux de forêt 2020 — Les pélicandromes, DGSCGC",
+          "verifie": true
+        },
+        {
+          "site": "angers",
+          "kind": "ouverture",
+          "texte": "Déploiement du pélicandrome mobile à Angers pour l'été ; premier remplissage opérationnel le 14 septembre (Milan 76), suivi d'interventions à Salbris puis au sud du Mans.",
+          "source": "F. Marsaly / Aerobuzz",
+          "verifie": true
+        },
+        {
+          "site": "ales",
+          "kind": "fermeture",
+          "texte": "Le retrait des Tracker entraîne l'arrêt de fait d'Alès : piste trop courte pour les Dash.",
+          "source": "F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "leluc",
+          "kind": "fermeture",
+          "texte": "Même cause au Luc / Le Cannet-des-Maures, à proximité de Hyères.",
+          "source": "F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "nimes",
+          "kind": "contexte",
+          "texte": "L'armement du pélicandrome de Nîmes passe des équipes du SDIS 30 à celles de la Sécurité civile.",
+          "source": "F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "chateauroux",
+          "kind": "construction",
+          "texte": "La presse annonce le projet d'un pélicandrome ambitieux à Châteauroux, position centrale utile à la défense de l'Île-de-France.",
+          "source": "France Bleu Berry, été 2020",
+          "verifie": true
+        }
+      ]
+    },
+    "2021": {
+      "evenements": [
+        {
+          "site": "epinal",
+          "kind": "ouverture",
+          "texte": "L'aéroport d'Épinal-Mirecourt devient le pélicandrome de la zone de défense Est (18 départements + frontières allemande, belge, luxembourgeoise et suisse). Premier Dash sur la plateforme le 19 avril ; installation mobile dans un premier temps.",
+          "source": "Préfecture des Vosges / Wikipédia / F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "albert",
+          "kind": "ouverture",
+          "texte": "Albert-Picardie (Méaulte) devient le seul pélicandrome au nord de Paris. Année incertaine : certaines sources indiquent 2020.",
+          "source": "France Bleu Picardie",
+          "verifie": false
+        },
+        {
+          "site": "marseille",
+          "kind": "construction",
+          "texte": "Appel d'offres pour de nouvelles installations dans la partie sud de l'emprise aéroportuaire de Marignane.",
+          "source": "F. Marsaly",
+          "verifie": true
+        },
+        {
+          "site": "aix",
+          "kind": "fermeture",
+          "texte": "Fermeture du pélicandrome d'Aix-les-Milles. Encore listé par la DGSCGC en juin 2020, donné comme fermé en juillet 2021 : l'année exacte n'est pas publiée, 2021 est la borne haute de la fourchette.",
+          "source": "Fiche thématique DGSCGC juin 2020 (présent) ; F. Marsaly, juillet 2021 (fermé)",
+          "verifie": false
+        }
+      ]
+    },
+    "2022": {
+      "evenements": [
+        {
+          "site": "chateauroux",
+          "kind": "ouverture",
+          "texte": "Création du pélicandrome de Châteauroux, à l'eau seule dans un premier temps, dans le cadre du plan de 150 M€ lancé après les feux de 2021.",
+          "source": "ICI / France Bleu Berry",
+          "verifie": true
+        },
+        {
+          "site": null,
+          "kind": "contexte",
+          "texte": "Après la saison 2022 (mégafeux de Gironde), la DGSCGC inspecte les 22 pélicandromes du territoire et conclut à la nécessité d'installer partout une réserve de retardant suffisante pour une journée complète de Dash.",
+          "source": "Réponse ministérielle, question écrite AN n° 6024",
+          "verifie": true
+        }
+      ]
+    },
+    "2023": {
+      "evenements": [
+        {
+          "site": "mtdemarsan",
+          "kind": "ouverture",
+          "texte": "Un pélicandrome mobile est installé à Pau-Uzein le 1er juillet puis transféré le 1er août sur la base aérienne 118 de Mont-de-Marsan, pour couvrir le sud du massif landais. Depuis, l'installation alterne entre les deux sites.",
+          "source": "CNEWS / préfecture de zone Sud-Ouest",
+          "verifie": true
+        },
+        {
+          "site": "calvi",
+          "kind": "livraison",
+          "texte": "Fin des travaux de mise aux normes et d'élargissement du pélicandrome de Calvi-Sainte-Catherine, financés à 100 % par la Collectivité de Corse ; site armé le 10 juillet.",
+          "source": "SIS 2B / Corse Net Infos",
+          "verifie": true
+        },
+        {
+          "site": "hyeres",
+          "kind": "construction",
+          "texte": "Notification des marchés de travaux en juillet et démarrage du chantier du pélicandrome permanent en septembre.",
+          "source": "Dossier de presse préfecture du Var",
+          "verifie": true
+        },
+        {
+          "site": "marseille",
+          "kind": "construction",
+          "texte": "Démarrage effectif du chantier du nouveau pélicandrome de Marignane, un peu plus d'un an avant son inauguration.",
+          "source": "Pompiers 13 (« débutée il y a un peu plus d'un an », octobre 2024)",
+          "verifie": true
+        }
+      ]
+    },
+    "2024": {
+      "evenements": [
+        {
+          "site": "hyeres",
+          "kind": "mobile_vers_fixe",
+          "texte": "Inauguration le 18 juillet du pélicandrome permanent de la base d'aéronautique navale : deux voies de remplissage, deux Dash chargés simultanément en moins de 6 minutes contre 24 avec l'installation mobile. Coût 4,874 M€ (Région Sud 55 %, Département 23 %, État/fonds vert 22 %).",
+          "source": "Préfecture du Var / AD RCSC-CCFF 83 / TPBM",
+          "verifie": true
+        },
+        {
+          "site": "chateauroux",
+          "kind": "livraison",
+          "texte": "Installation d'une cuve de retardant de 30 m³ ; 12 sapeurs-pompiers formés au dosage. Le site n'avait pas encore été sollicité depuis sa création.",
+          "source": "ICI / France Bleu Berry, juillet 2024",
+          "verifie": true
+        },
+        {
+          "site": "marseille",
+          "kind": "livraison",
+          "texte": "Inauguration le 11 octobre du nouveau pélicandrome du SDIS 13 à Marignane, fonctionnel depuis l'été, après un peu plus d'un an de travaux. Cofinancement de 2,7 M€. La Sécurité civile dénombre alors 23 pélicandromes.",
+          "source": "Pompiers 13 / Sécurité civile",
+          "verifie": true
+        }
+      ]
+    },
+    "2025": {
+      "evenements": [
+        {
+          "site": "epinal",
+          "kind": "mobile_vers_fixe",
+          "texte": "Le pélicandrome d'Épinal-Mirecourt est complété par une station fixe en eau et retardant ; essais avec le Dash Milan 77 le 22 avril en présence de la préfète des Vosges.",
+          "source": "Aéroport d'Épinal-Mirecourt / préfecture des Vosges",
+          "verifie": true
+        },
+        {
+          "site": "saint-etienne",
+          "kind": "livraison",
+          "texte": "Le pélicandrome d'Andrézieux-Bouthéon est doté d'une remorque de produit retardant de 40 000 L, de quoi ravitailler quatre avions ; trois personnels suffisent à l'armer.",
+          "source": "SDIS 42 / presse locale, juin 2025",
+          "verifie": true
+        },
+        {
+          "site": "auch",
+          "kind": "construction",
+          "texte": "Première visite technique à l'aéroport d'Auch pour choisir l'emplacement d'un futur pélicandrome.",
+          "source": "France 3 Occitanie, 02/02/2026 (mentionne une visite « l'an passé »)",
+          "verifie": false
+        }
+      ]
+    },
+    "2026": {
+      "evenements": [
+        {
+          "site": null,
+          "kind": "contexte",
+          "texte": "6 février : les préfets de la zone Sud-Ouest confirment le maintien des pélicandromes de Bordeaux et Limoges et de l'installation alternante Mont-de-Marsan / Pau. Un projet de déplacement de cette dernière vers Auch est parallèlement à l'étude (question écrite au Sénat, février 2026).",
+          "source": "Préfecture de région Nouvelle-Aquitaine / Sénat",
+          "verifie": true
+        },
+        {
+          "site": "auch",
+          "kind": "construction",
+          "texte": "2 février : deuxième visite technique à l'aéroport d'Auch-Lamothe en vue d'y implanter le pélicandrome aujourd'hui à Mont-de-Marsan. Implantation provisoire évoquée pour l'été 2026, pérennisation ensuite. Seul site en projet identifié à ce jour.",
+          "source": "France 3 Occitanie / Sénat, question écrite du 12/02/2026",
+          "verifie": true
+        },
+        {
+          "site": "niort",
+          "kind": "ouverture",
+          "texte": "12 mai : l'État retient l'aérodrome de Niort-Marais Poitevin pour une installation provisoire et estivale, deux cuves de 30 m³ (eau et retardant), afin de combler le vide entre Bordeaux, Limoges et Angers.",
+          "source": "Ville de Niort / France 3 Nouvelle-Aquitaine",
+          "verifie": true
+        },
+        {
+          "site": "rodez",
+          "kind": "ouverture",
+          "texte": "17 juin : mise en service d'un pélicandrome mobile à l'aéroport de Rodez-Aveyron, armé par 12 sapeurs-pompiers du SDIS 12. Il comble une zone blanche sur un département dont 43 % du territoire est exposé. Premier engagement dès le 24 juin sur l'incendie de Nant (35 ha). Une installation définitive de plus d'un million d'euros est évoquée d'ici deux ans.",
+          "source": "France 3 Occitanie / 12actu / Média 12",
+          "verifie": true
+        },
+        {
+          "site": "epinal",
+          "kind": "contexte",
+          "texte": "13 juillet : pour la première fois depuis sa mise en service, Épinal-Mirecourt est engagé en soutien de moyens aériens, pour les incendies du massif de Fontainebleau. Angers-Marcé est simultanément au cœur du dispositif de ravitaillement. Les feux parcourent près de 2 000 ha.",
+          "source": "France 3 Grand Est / France 3 Pays de la Loire / préfecture de Seine-et-Marne",
+          "verifie": true
+        }
+      ]
+    },
+    "1963": {
+      "evenements": [
+        {
+          "site": null,
+          "kind": "contexte",
+          "texte": "Le Service national de la protection civile installe ses premiers Catalina / Canso à Marignane. Les ennuis techniques rencontrés à l'écopage conduisent à remplir les avions au sol, sur une aire baptisée « pélicandrome », et à utiliser pour la première fois un produit retardant. Le concept et le produit naissent donc ensemble, dans les années 1960.",
+          "source": "rescue18.com, netpompiers.fr, Office de tourisme de Marignane",
+          "verifie": true
+        }
+      ]
+    }
+  }
+}
