@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartographie DFCI : Impacts Incendies vs Couvert Forestier</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-primary); padding: 20px; line-height: 1.5; }
+        
+        .layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+        
+        /* Conteneur Carte Redimensionnable */
+        .map-wrapper {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            position: relative;
+            height: 800px;
+            min-height: 400px;
+            min-width: 400px;
+            resize: both;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .map-header {
+            padding: 12px 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #map-svg { width: 100%; height: 100%; cursor: grab; display: block; }
+        #map-svg:active { cursor: grabbing; }
+
+        .zoom-controls {
+            position: absolute; top: 60px; right: 16px;
+            display: flex; flex-direction: column; gap: 6px; z-index: 20;
+        }
+        .zoom-btn {
+            background: #1e293b; color: #fff; border: 1px solid #475569;
+            width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+            font-size: 1.1rem; font-weight: bold; transition: 0.2s;
+        }
+        .zoom-btn:hover { background: #334155; }
+
+        /* Panneaux latéraux */
+        .sidebar { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; max-height: 800px; padding-right: 8px;}
+        .panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; }
+        .panel-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; color: #e2e8f0; }
+
+        /* Switch Mode */
+        .mode-switch {
+            display: flex; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 4px; margin-bottom: 12px;
+        }
+        .mode-btn {
+            flex: 1; padding: 10px; text-align: center; cursor: pointer;
+            border-radius: 6px; font-size: 0.85rem; font-weight: 600; transition: 0.3s;
+            color: var(--text-secondary);
+        }
+        .mode-btn.active { background: var(--accent-blue); color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+        /* Contrôles globaux */
+        .options-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px dashed #475569;}
+        .checkbox-label { display: flex; align-items: flex-start; gap: 8px; font-size: 0.85rem; cursor: pointer; line-height: 1.3;}
+        .checkbox-label input { margin-top: 3px; }
+        
+        /* Slider Mode 1 */
+        .slider-group { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+        .slider-header { display: flex; justify-content: space-between; }
+        input[type="range"] { accent-color: var(--accent-blue); }
+
+        /* Bivariate Colors Pickers (Mode 2) */
+        .color-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.75rem; margin-top: 10px; }
+        .color-picker-item { display: flex; flex-direction: column; gap: 4px; }
+        input[type="color"] { width: 100%; height: 28px; border: 1px solid #475569; border-radius: 4px; cursor: pointer; background: transparent; padding: 0;}
+
+        /* Légende Bivariée (Mode 2) */
+        .bivariate-legend { display: grid; grid-template-columns: 20px auto; gap: 8px; align-items: center; justify-content: center; margin-top: 16px;}
+        .bivariate-grid { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 2px;}
+        .bv-cell { width: 100%; height: 100%; border-radius: 2px; }
+        .y-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 0.75rem; text-align: center; color: #ef4444; font-weight: bold;}
+        .x-label { grid-column: 2; font-size: 0.75rem; text-align: center; color: #22c55e; margin-top: 4px; font-weight: bold;}
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--card-border);
+            padding: 12px; border-radius: 8px; font-size: 0.85rem; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            z-index: 1000; display: none; min-width: 240px;
+        }
+
+        /* SVG Elements */
+        .zone-path { stroke: #1e293b; stroke-width: 0.5px; transition: fill 0.3s, fill-opacity 0.2s; }
+        .zone-path:hover { stroke: #ffffff; stroke-width: 1.5px; fill-opacity: 0.8; cursor: crosshair; }
+        .fire-bubble { fill: rgba(239, 68, 68, 0.7); stroke: #ef4444; stroke-width: 1px; transition: r 0.3s; pointer-events: none; }
+        
+        .peli-marker circle { fill: #3b82f6; stroke: #fff; stroke-width: 1.5px; }
+        .peli-marker text { fill: #fff; font-size: 10px; font-weight: bold; text-shadow: 0px 1px 3px #000; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="layout">
+        <div class="map-wrapper" id="map-wrapper">
+            <div class="map-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 1.2rem;">Impacts Incendies vs Couvert Forestier</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Base d'analyse : Modélisation 5 ans</div>
+                </div>
+                <button class="zoom-btn" id="btn-fullscreen" title="Plein Écran" style="position: static;">⛶</button>
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="btn-zoom-in">+</button>
+                <button class="zoom-btn" id="btn-zoom-out">−</button>
+                <button class="zoom-btn" id="btn-zoom-reset">⟲</button>
+            </div>
+            <svg id="map-svg"></svg>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-title">Représentation Cartographique</div>
+                
+                <div class="mode-switch">
+                    <div class="mode-btn active" id="btn-mode-1" onclick="switchMode(1)">Mode 1<br><span style="font-size: 0.7rem; font-weight:normal;">(Choroplèthe + Bulles)</span></div>
+                    <div class="mode-btn" id="btn-mode-2" onclick="switchMode(2)">Mode 2<br><span style="font-size: 0.7rem; font-weight:normal;">(Fusion Bivariée)</span></div>
+                </div>
+
+                <div class="options-group">
+                    <label class="checkbox-label" title="Si coché, le % de surface brûlée est divisé par rapport à la taille totale du département au lieu de la seule forêt.">
+                        <input type="checkbox" id="check-ratio-total">
+                        <div>
+                            <strong>Ratio sur la surface totale du département</strong><br>
+                            <span style="color:#94a3b8; font-size:0.75rem;">Ex: Si forêt=50% et que 10% brûlent, l'impact total affiché sera de 5%. Si décoché, on affiche 10%.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="controls-mode-1" class="options-group">
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span>Facteur multiplicatif (Taille bulles) :</span>
+                            <span id="mult-val" style="color: var(--accent-blue); font-weight:bold;">x5.0</span>
+                        </div>
+                        <input type="range" id="size-multiplier" min="1" max="20" step="0.5" value="5">
+                    </div>
+                </div>
+
+                <div id="controls-mode-2" class="options-group" style="display: none;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">Personnalisation de la Matrice (4 coins)</div>
+                    <div class="color-pickers">
+                        <div class="color-picker-item">
+                            <label>Min Forêt / Min Feu</label>
+                            <input type="color" id="col-00" value="#f8fafc">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Max Forêt / Min Feu</label>
+                            <input type="color" id="col-20" value="#22c55e">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Min Forêt / Max Feu</label>
+                            <input type="color" id="col-02" value="#fca5a5">
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Max Forêt / Max Feu</label>
+                            <input type="color" id="col-22" value="#7f1d1d">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="legend-container">
+                    </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Infrastructures</div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="check-pelicandromes" checked>
+                    Afficher les Pélicandromes
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DONNÉES LOCALES (Approximatives) ---
+        // f = % de forêt (couvert végétal forestier)
+        // b = % de base brûlé DANS LA FORÊT (si 3.8, ça veut dire 3.8% de la forêt a brûlé).
+        const dbData = {
+            "2A": { f: 66, b: 6.5 }, "2B": { f: 55, b: 5.2 }, "83": { f: 65, b: 4.8 }, "13": { f: 38, b: 3.1 },
+            "84": { f: 45, b: 2.5 }, "30": { f: 42, b: 2.2 }, "34": { f: 38, b: 2.5 }, "11": { f: 32, b: 2.7 },
+            "66": { f: 35, b: 2.4 }, "33": { f: 50, b: 4.5 }, "40": { f: 65, b: 3.8 }, "24": { f: 45, b: 1.5 },
+            "47": { f: 30, b: 0.8 }, "29": { f: 12, b: 0.9 }, "35": { f: 15, b: 0.5 }, "56": { f: 18, b: 0.6 },
+            "39": { f: 48, b: 0.4 }, "25": { f: 45, b: 0.3 }, "88": { f: 52, b: 0.2 }, "75": { f: 5, b: 0.0 },
+            "44": { f: 12, b: 0.6 }, "49": { f: 16, b: 0.4 }, "72": { f: 20, b: 0.8 }, "06": { f: 62, b: 1.8 },
+            "04": { f: 58, b: 1.2 }, "05": { f: 52, b: 0.7 }, "07": { f: 55, b: 1.1 }, "26": { f: 48, b: 0.8 }
+        };
+
+        function getDeptData(code) {
+            let data = dbData[code];
+            if (!data) {
+                let pseudoRandom = parseInt(code) || 10;
+                data = { f: 15 + (pseudoRandom % 25), b: (pseudoRandom % 5) * 0.05 };
+            }
+            return { f: data.f, b: data.b }; // On clone pour ne pas altérer dbData
+        }
+
+        // --- MATRICE BIVARIÉE DYNAMIQUE ---
+        // On stocke la grille 3x3 (X = Forêt, Y = Feu)
+        // Coordonnées [x][y] où 0 est faible, 2 est fort.
+        let bvMatrix = [
+            ["", "", ""], // Forêt Faible (Feu: F, M, F)
+            ["", "", ""], // Forêt Moyenne
+            ["", "", ""]  // Forêt Forte
+        ];
+
+        function updateBivariateMatrix() {
+            const c00 = document.getElementById('col-00').value; // Min Forêt / Min Feu
+            const c20 = document.getElementById('col-20').value; // Max Forêt / Min Feu
+            const c02 = document.getElementById('col-02').value; // Min Forêt / Max Feu
+            const c22 = document.getElementById('col-22').value; // Max Forêt / Max Feu
+
+            // Interpolation bilinéaire
+            // Ligne du bas (Min Feu) de Forêt Faible à Forêt Forte
+            const interpBottom = d3.interpolateRgb(c00, c20);
+            // Ligne du haut (Max Feu) de Forêt Faible à Forêt Forte
+            const interpTop = d3.interpolateRgb(c02, c22);
+
+            for (let x = 0; x <= 2; x++) {
+                const ratioX = x / 2;
+                const colBottom = interpBottom(ratioX);
+                const colTop = interpTop(ratioX);
+                // Colonne verticale X de Min Feu à Max Feu
+                const interpVert = d3.interpolateRgb(colBottom, colTop);
+                
+                for (let y = 0; y <= 2; y++) {
+                    const ratioY = y / 2;
+                    bvMatrix[x][y] = interpVert(ratioY);
+                }
+            }
+        }
+
+        function getBivariateColor(f, b) {
+            let x = f < 25 ? 0 : (f < 45 ? 1 : 2); // Seuils Forêt
+            let y = b < 0.2 ? 0 : (b < 1.0 ? 1 : 2); // Seuils Feu (ajustés selon impact brut/total)
+            return bvMatrix[x][y];
+        }
+
+        // --- PÉLICANDROMES ---
+        const pelicandromes = [
+            { name: "Vannes", lat: 47.723, lon: -2.716, alignLeft: false },
+            { name: "Angers", lat: 47.471, lon: -0.551, alignLeft: false },
+            { name: "Tours", lat: 47.432, lon: 0.723, alignLeft: false },
+            { name: "Châteauroux", lat: 46.860, lon: 1.721, alignLeft: false },
+            { name: "Limoges", lat: 45.862, lon: 1.238, alignLeft: false },
+            { name: "Bordeaux", lat: 44.828, lon: -0.715, alignLeft: false },
+            { name: "Cahors", lat: 44.446, lon: 1.442, alignLeft: false },
+            { name: "Carcassonne", lat: 43.216, lon: 2.306, alignLeft: true },
+            { name: "Perpignan", lat: 42.740, lon: 2.870, alignLeft: false },
+            { name: "Béziers", lat: 43.323, lon: 3.353, alignLeft: false },
+            { name: "Nîmes", lat: 43.757, lon: 4.416, alignLeft: false },
+            { name: "Alès", lat: 44.126, lon: 4.083, alignLeft: false },
+            { name: "Aubenas", lat: 44.596, lon: 4.372, alignLeft: false },
+            { name: "Valence", lat: 44.921, lon: 4.969, alignLeft: false },
+            { name: "Marseille", lat: 43.436, lon: 5.215, alignLeft: true },
+            { name: "Cannes", lat: 43.542, lon: 6.953, alignLeft: false },
+            { name: "Bastia", lat: 42.550, lon: 9.485, alignLeft: false },
+            { name: "Ajaccio", lat: 41.924, lon: 8.803, alignLeft: true },
+            { name: "Solenzara", lat: 41.855, lon: 9.406, alignLeft: false },
+            { name: "Figari", lat: 41.501, lon: 9.097, alignLeft: false },
+            { name: "Épinal", lat: 48.325, lon: 6.070, alignLeft: false }
+        ];
+
+        // --- INIT D3 ---
+        let currentMode = 1;
+        const MAP_URL = "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson@master/departements.geojson";
+        const wrapper = document.getElementById('map-wrapper');
+        let width = wrapper.clientWidth;
+        let height = wrapper.clientHeight;
+
+        const svg = d3.select("#map-svg").attr("viewBox", `0 0 ${width} ${height}`);
+        const mapGroup = svg.append("g").attr("id", "map-group");
+        const regionsLayer = mapGroup.append("g").attr("id", "regions-layer");
+        const bubblesLayer = mapGroup.append("g").attr("id", "bubbles-layer");
+        const peliLayer = mapGroup.append("g").attr("id", "pelicandromes-layer");
+        const tooltip = d3.select("#tooltip");
+
+        const projection = d3.geoConicConformal().center([2.45, 46.5]).scale(width * 4).translate([width / 2, height / 2]);
+        const pathGenerator = d3.geoPath().projection(projection);
+
+        let geoData = null;
+
+        // Pan/Zoom
+        const zoomBehavior = d3.zoom().scaleExtent([0.8, 10]).on("zoom", e => mapGroup.attr("transform", e.transform));
+        svg.call(zoomBehavior);
+        document.getElementById("btn-zoom-in").addEventListener("click", () => svg.transition().call(zoomBehavior.scaleBy, 1.4));
+        document.getElementById("btn-zoom-out").addEventListener("click", () => svg.transition().call(zoomBehavior.scaleBy, 0.71));
+        document.getElementById("btn-zoom-reset").addEventListener("click", () => svg.transition().call(zoomBehavior.transform, d3.zoomIdentity));
+        document.getElementById("btn-fullscreen").addEventListener("click", () => {
+            if (!document.fullscreenElement) wrapper.requestFullscreen();
+            else document.exitFullscreen();
+        });
+
+        new ResizeObserver(() => {
+            width = wrapper.clientWidth; height = wrapper.clientHeight;
+            svg.attr("viewBox", `0 0 ${width} ${height}`);
+            if(geoData) { projection.fitExtent([[20, 20], [width - 20, height - 20]], geoData); renderMap(); }
+        }).observe(wrapper);
+
+        const colorScaleForest = d3.scaleSequential(d3.interpolateGreens).domain([0, 70]);
+
+        function renderMap() {
+            if (!geoData) return;
+
+            const useTotalRatio = document.getElementById('check-ratio-total').checked;
+            const multiplier = parseFloat(document.getElementById('size-multiplier').value);
+            document.getElementById('mult-val').innerText = `x${multiplier.toFixed(1)}`;
+            const showPeli = document.getElementById('check-pelicandromes').checked;
+
+            if (currentMode === 2) updateBivariateMatrix();
+
+            // Rendu des départements
+            regionsLayer.selectAll("path")
+                .data(geoData.features)
+                .join("path")
+                .attr("class", "zone-path")
+                .attr("d", pathGenerator)
+                .style("fill", d => {
+                    const data = getDeptData(d.properties.code);
+                    let fireImpact = useTotalRatio ? data.b * (data.f / 100) : data.b;
+
+                    if (currentMode === 1) {
+                        return colorScaleForest(data.f);
+                    } else {
+                        return getBivariateColor(data.f, fireImpact);
+                    }
+                })
+                .on("mouseover", function(e, d) {
+                    const data = getDeptData(d.properties.code);
+                    let fireImpact = useTotalRatio ? data.b * (data.f / 100) : data.b;
+                    
+                    let calcText = useTotalRatio ? "Ratio / Surface Totale :" : "Ratio / Surface Boisée :";
+
+                    tooltip.style("display", "block").html(`
+                        <h4>📍 ${d.properties.nom} (${d.properties.code})</h4>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+                            <span>Couverture Forestière :</span> <span style="color:#22c55e; font-weight:bold;">${data.f.toFixed(1)} %</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-top: 1px dotted #334155; padding-top:4px;">
+                            <span style="font-size:0.8rem;">${calcText}</span> <span style="color:#ef4444; font-weight:bold;">${fireImpact.toFixed(2)} %</span>
+                        </div>
+                    `);
+                })
+                .on("mousemove", e => { const [mx, my] = d3.pointer(e, wrapper); tooltip.style("left", (mx+20)+"px").style("top", (my+20)+"px"); })
+                .on("mouseout", () => tooltip.style("display", "none"));
+
+            // Rendu des Bulles (Mode 1 uniquement)
+            bubblesLayer.selectAll("circle")
+                .data(geoData.features)
+                .join("circle")
+                .attr("class", "fire-bubble")
+                .attr("cx", d => d3.geoCentroid(d)[0] ? projection(d3.geoCentroid(d))[0] : 0)
+                .attr("cy", d => d3.geoCentroid(d)[1] ? projection(d3.geoCentroid(d))[1] : 0)
+                .style("display", currentMode === 1 ? "block" : "none")
+                .attr("r", d => {
+                    const data = getDeptData(d.properties.code);
+                    let fireImpact = useTotalRatio ? data.b * (data.f / 100) : data.b;
+                    if (fireImpact === 0) return 0;
+                    return Math.sqrt(fireImpact) * 3 * multiplier; // Échelle perceptuelle
+                });
+
+            // Rendu Pélicandromes
+            peliLayer.selectAll("*").remove();
+            if (showPeli) {
+                pelicandromes.forEach(p => {
+                    const coords = projection([p.lon, p.lat]);
+                    if (coords) {
+                        const node = peliLayer.append("g").attr("class", "peli-marker").attr("transform", `translate(${coords[0]}, ${coords[1]})`);
+                        node.append("circle").attr("r", 4);
+                        const text = node.append("text").attr("y", 3).text(p.name);
+                        if (p.alignLeft) text.attr("x", -7).attr("text-anchor", "end");
+                        else text.attr("x", 7).attr("text-anchor", "start");
+                    }
+                });
+            }
+
+            if (currentMode === 2) buildLegendMode2();
+        }
+
+        // --- GESTION INTERFACE ---
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-1').classList.toggle('active', mode === 1);
+            document.getElementById('btn-mode-2').classList.toggle('active', mode === 2);
+            document.getElementById('controls-mode-1').style.display = mode === 1 ? 'flex' : 'none';
+            document.getElementById('controls-mode-2').style.display = mode === 2 ? 'flex' : 'none';
+            
+            const container = document.getElementById('legend-container');
+            if (mode === 1) {
+                container.innerHTML = `
+                    <div style="font-size:0.8rem; font-weight:bold; color:#cbd5e1; margin-bottom:4px;">Couverture Forestière (%)</div>
+                    <div style="width:100%; height:12px; background:linear-gradient(to right, #f8fafc, #10b981); border-radius:4px;"></div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94a3b8; margin-bottom:12px;">
+                        <span>0%</span><span>70%+</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
+                        <span style="display:inline-block; width:16px; height:16px; border-radius:50%; background:rgba(239, 68, 68, 0.7); border:1px solid #ef4444;"></span>
+                        Surface impactée
+                    </div>
+                `;
+            } else {
+                container.innerHTML = ``; // La légende Mode 2 est dynamique et injectée par buildLegendMode2()
+            }
+            renderMap();
+        }
+
+        function buildLegendMode2() {
+            if (currentMode !== 2) return;
+            const container = document.getElementById('legend-container');
+            
+            // On reconstruit la grille CSS dynamiquement à partir de bvMatrix (Attention: on inverse l'axe Y visuellement pour que Min Feu soit en bas)
+            let gridHTML = "";
+            for (let y = 2; y >= 0; y--) { // Dessin de haut en bas
+                for (let x = 0; x <= 2; x++) { // Dessin de gauche à droite
+                    gridHTML += `<div class="bv-cell" style="background:${bvMatrix[x][y]};"></div>`;
+                }
+            }
+
+            container.innerHTML = `
+                <div style="font-size:0.8rem; font-weight:bold; color:#cbd5e1; margin-bottom:10px;">Légende Matrice Bivariée</div>
+                <div class="bivariate-legend">
+                    <div class="y-label">Impact Incendie ➔</div>
+                    <div class="bivariate-grid">
+                        ${gridHTML}
+                    </div>
+                    <div class="x-label">Taux de Forêt ➔</div>
+                </div>
+            `;
+        }
+
+        // --- ÉVÈNEMENTS ---
+        document.getElementById('check-ratio-total').addEventListener('change', renderMap);
+        document.getElementById('size-multiplier').addEventListener('input', renderMap);
+        document.getElementById('check-pelicandromes').addEventListener('change', renderMap);
+        
+        ['col-00', 'col-20', 'col-02', 'col-22'].forEach(id => {
+            document.getElementById(id).addEventListener('input', renderMap);
+        });
+
+        // Chargement Data
+        d3.json(MAP_URL).then(geojson => {
+            geoData = geojson;
+            projection.fitExtent([[20, 20], [width - 20, height - 20]], geoData);
+            switchMode(1); // Init
+        });
+
+    </script>
+</body>
+</html>
