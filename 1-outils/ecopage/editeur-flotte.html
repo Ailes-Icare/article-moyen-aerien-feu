@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de flotte — JSON commun des aéronefs</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--card2:#172033;--line:#334155;--ink:#e8eef7;--muted:#94a7c0;
+ --faint:#64768e;--acc:#38bdf8;--ok:#4ade80;--warn:#fbbf24;--err:#f87171;--est:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,'Segoe UI',sans-serif;
+ padding:26px clamp(14px,4vw,60px) 60px;line-height:1.45}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.95rem;margin-bottom:18px;max-width:900px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.btn{font:inherit;font-size:.9rem;font-weight:600;color:var(--ink);background:var(--card);
+ border:1px solid var(--line);border-radius:8px;padding:9px 15px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}
+.btn.primary{background:#0c4a6e;border-color:#0284c7}
+.btn.mini{padding:5px 10px;font-size:.8rem;font-weight:500}
+.btn.danger{border-color:#7f1d1d;color:#fca5a5}
+#msg{border-radius:8px;padding:10px 14px;font-size:.9rem;display:none;margin-bottom:14px}
+#msg.ok{display:block;background:#052e16;border:1px solid #166534}
+#msg.err{display:block;background:#450a0a;border:1px solid #b91c1c}
+#msg.warn{display:block;background:#451a03;border:1px solid #b45309}
+#msg.info{display:block;background:#0c2036;border:1px solid #075985}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h3{margin:0 0 2px;font-size:1.02rem}
+.card .id{color:var(--faint);font-size:.78rem;font-family:ui-monospace,monospace}
+.card .l{color:var(--muted);font-size:.85rem;margin-top:7px}
+.card .l b{color:var(--ink);font-weight:600}
+.badges{margin-top:9px;display:flex;gap:5px;flex-wrap:wrap}
+.bdg{font-size:.7rem;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.bdg.c{border-color:#166534;color:#86efac}
+.bdg.e{border-color:#b45309;color:#fcd34d}
+.bdg.x{border-color:#7f1d1d;color:#fca5a5}
+.card .act{margin-top:11px;display:flex;gap:8px}
+.stat{color:var(--faint);font-size:.85rem;margin:14px 0}
+/* --- modale --- */
+.mbg{position:fixed;inset:0;background:rgba(2,6,17,.85);display:none;align-items:flex-start;
+ justify-content:center;z-index:50;padding:24px 12px;overflow-y:auto}
+.mbg.open{display:flex}
+.modal{background:var(--card);border:1px solid #475569;border-radius:12px;width:min(1180px,100%);
+ padding:20px 22px;margin:auto 0}
+.modal h2{margin:0 0 4px;font-size:1.15rem}
+.mnote{color:var(--muted);font-size:.85rem;margin-bottom:14px}
+.msec{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--acc);
+ border-bottom:1px solid var(--line);padding-bottom:5px;margin:20px 0 10px;font-weight:700}
+.mrow{display:grid;grid-template-columns:230px minmax(130px,1fr) 150px minmax(200px,2fr);
+ gap:8px;align-items:start;padding:4px 0}
+.mrow.wide{grid-template-columns:230px 1fr}
+.mrow label{font-size:.83rem;color:var(--muted);padding-top:7px}
+.mrow input,.mrow select,.mrow textarea{font:inherit;font-size:.87rem;color:var(--ink);
+ background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%}
+.mrow textarea{resize:vertical;min-height:34px}
+.mrow select.src{color:var(--muted)}
+.mrow select.src.est{color:var(--est);border-color:#92600a}
+.mrow select.src.c{color:#86efac;border-color:#14532d}
+.mrow .noSrc{color:var(--faint);font-size:.78rem;padding-top:8px;text-align:center}
+.mact{display:flex;gap:10px;justify-content:space-between;margin-top:20px;flex-wrap:wrap}
+.mact .right{display:flex;gap:10px;margin-left:auto}
+@media (max-width:900px){.mrow{grid-template-columns:1fr}.mrow label{padding-top:0}}
+.note{color:var(--faint);font-size:.8rem}
+.head-cols{display:none;color:var(--faint);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+@media (min-width:901px){.head-cols{display:grid;grid-template-columns:230px minmax(130px,1fr) 150px minmax(200px,2fr);gap:8px;margin-top:6px}}
+</style>
+</head>
+<body>
+<h1>Éditeur de flotte</h1>
+<div class="sub">Édite le JSON de flotte commun à tous les outils (profil de vol, distance pélicandrome, comparatif,
+plans d'eau). Chaque grandeur porte un statut de source (trouvée : constructeur / publiée — ou interprétée :
+estimée / interpolée / analogie / concept) et un commentaire libre : lien de la source, ou base de l'interpolation.
+Rien n'est définitif tant que le JSON n'a pas été réexporté puis remis à la place de l'ancien.</div>
+<div class="bar">
+  <button class="btn primary" id="b-exp">Exporter flotte.json</button>
+  <button class="btn" id="b-imp">Importer un JSON de flotte</button>
+  <input type="file" id="i-imp" accept=".json,application/json" style="display:none">
+  <button class="btn" id="b-add">Ajouter un appareil</button>
+  <button class="btn" id="b-oubli">Oublier le brouillon local</button>
+  <button class="btn" id="b-imp-csv" style="border-color:#38bdf8; color:#38bdf8;">Importer un CSV de MàJ</button>
+  <input type="file" id="i-imp-csv" accept=".csv" style="display:none">
+  <button class="btn" id="b-imp-un" style="border-color:#4ade80; color:#4ade80;">Importer une fiche d'appareil</button>
+  <input type="file" id="i-imp-un" accept=".json,application/json" style="display:none">
+</div>
+<div id="msg"></div>
+<div class="stat" id="stat"></div>
+<div class="grid" id="liste"></div>
+
+<div class="mbg" id="mbg"><div class="modal">
+  <h2 id="m-titre">Édition</h2>
+  <div class="mnote">Statut de source : <b>constructeur</b> ou <b>publiée</b> = donnée trouvée ;
+    <b>estimée</b>, <b>interpolée</b>, <b>analogie</b>, <b>concept</b> = donnée interprétée (affichée avec un astérisque
+    dans les outils). Le commentaire attend le lien de la source, ou la base de l'interpolation.
+    Cette fenêtre ne se ferme que par Annuler ou Valider.</div>
+  <div class="head-cols"><span></span><span>Valeur</span><span>Source</span><span>Commentaire (lien ou base d'interpolation)</span></div>
+  <div id="m-corps"></div>
+  <div class="mact">
+    <button class="btn danger" id="m-del">Supprimer cet appareil</button>
+    <div class="right">
+      <button class="btn" id="m-annul">Annuler</button>
+      <button class="btn primary" id="m-ok">Valider</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="mbg" id="mbg-csv"><div class="modal" style="width:min(1200px,100%);">
+  <h2>Validation de l'import CSV</h2>
+  <div class="mnote">L'outil a détecté des différences entre le JSON actuel et le CSV importé. Pour chaque champ, choisissez la valeur à conserver. Les cases vides du CSV sont ignorées.</div>
+  <div style="max-height:60vh;overflow-y:auto;background:var(--card2);padding:10px;border-radius:8px;border:1px solid var(--line);margin-bottom:15px;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;text-align:left;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--line);">
+          <th style="padding:8px">Appareil</th>
+          <th style="padding:8px">Champ</th>
+          <th style="padding:8px;width:35%;color:var(--warn)">Actuel (JSON)</th>
+          <th style="padding:8px;width:35%;color:var(--ok)">Nouveau (CSV)</th>
+          <th style="padding:8px">Conserver</th>
+        </tr>
+      </thead>
+      <tbody id="csv-diff-body"></tbody>
+    </table>
+  </div>
+  <div class="mact">
+    <button class="btn danger" id="m-csv-annul">Annuler</button>
+    <div class="right">
+      <button class="btn primary" id="m-csv-ok">Appliquer la sélection</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="mbg" id="mbg-un"><div class="modal" style="width:min(1240px,100%)">
+  <h2 id="m-un-titre">Import d'une fiche d'appareil</h2>
+  <div class="mnote">Chaque ligne est un <b>désaccord</b> entre le référentiel et le fichier importé.
+    Les champs identiques ne sont pas listés. <b>Rien n'est appliqué sans votre choix :</b> cochez, colonne
+    par colonne, la valeur qui fait foi. Le statut de source et le commentaire de chaque côté vous disent
+    d'où sort le chiffre. Cette fenêtre ne se ferme que par Annuler ou Valider.</div>
+  <div id="un-resume" class="mnote" style="color:var(--ink)"></div>
+  <div class="bar" style="margin:6px 0 12px">
+    <button class="btn mini" id="un-tout-ref">Tout garder du référentiel</button>
+    <button class="btn mini" id="un-tout-fic">Tout prendre du fichier</button>
+    <button class="btn mini" id="un-defaut">Revenir au choix conseillé</button>
+  </div>
+  <div style="max-height:56vh;overflow-y:auto;background:var(--card2);padding:10px;border-radius:8px;
+              border:1px solid var(--line);margin-bottom:15px">
+    <table style="width:100%;border-collapse:collapse;font-size:.83rem;text-align:left">
+      <thead><tr style="border-bottom:1px solid var(--line)">
+        <th style="padding:8px;width:22%">Champ</th>
+        <th style="padding:8px;width:34%;color:var(--warn)">Référentiel actuel</th>
+        <th style="padding:8px;width:34%;color:var(--ok)">Fichier importé</th>
+        <th style="padding:8px;width:10%;white-space:nowrap">On garde</th></tr></thead>
+      <tbody id="un-corps"></tbody>
+    </table>
+  </div>
+  <div class="mact"><button class="btn" id="m-un-annul">Annuler</button>
+    <div class="right"><button class="btn primary" id="m-un-ok">Appliquer les choix</button></div></div>
+</div></div>
+
+<!-- ===== BLOC DE DONNÉES EMBARQUÉES — DÉBUT (flotte.json, v6) ===== -->
+<script id="data-flotte" type="application/json">
+{
+ "meta": {
+  "version": "2026-08-18-v6.4",
+  "perimetre": "Aéronefs uniquement.",
+  "derniere_maj": "2026-08-18 - eclatement du champ moteur : moteur_nombre et moteur_reference saisis, enginePower recompose par le bloc de calcul partage.",
+  "sourcage": "Convention v6 : toute grandeur numérique exploitée par un algorithme peut porter deux champs frères : <champ>_src (constructeur / publie / estime / interpole / analogie / concept ; vide = non renseigné) et <champ>_commentaire (URL de la source OU base de l'interpolation). Les outils tirent leurs légendes de ces commentaires : plus aucune référence codée en dur. Champs déjà appariés en v5 (citerne_l/citerne_commentaire, enginePower/enginePowerSrc) conservés tels quels pour compatibilité.",
+  "commentaires": "Forme canonique <champ>_commentaire, construite sur le nom complet du champ, unite comprise. Les formes tronquees vitesse_commentaire, autonomie_commentaire, citerne_commentaire et ecopage_commentaire ont ete supprimees le 2026-08-18.",
+  "variantes": "Une ligne par variante, pas par famille : la capacite d'ecopage est une propriete de la variante. id est la seule cle de liaison entre outils, name ne doit jamais servir de cle.",
+  "plan_de_vol": "Le referentiel de plan de vol vit dans la flotte ; profils-vol-ecopage ne porte que l'affichage. Trois phases de contact : ecopage_duree_avant_s (toucher -> plein debit), ecopage_duree_efficace_s (remplissage continu), et le reste de ecopage_duree_s (dejaugeage plein). ecopage_distance_m est la course TOTALE, egale a (vTouche+v)/2*tAvant + v*tEff + (v+vRotation)/2*tApres. Un ecart entre les deux signifie que l'une des valeurs sources est fausse.",
+  "puissance": "Puissance moteur ajoutée le 2026-07-24 (recherche web). Statut par appareil dans enginePowerSrc : constructeur / estimé / analogie ATR 72 / annoncé / concept.",
+  "ecopage": "Schema saisie/derive. On saisit par phase la DUREE ou la DISTANCE, jamais les deux, plus les trois vitesses : le bloc de calcul partage deduit le reste. Champs derives, _src = calcul, a ne jamais editer a la main : ecopage_distance_avant_m, ecopage_distance_efficace_m, ecopage_distance_apres_m, ecopage_distance_m, ecopage_duree_s, longueur_min_m.",
+  "longueur_min_m": "GRANDEUR FORMELLE, calculee, non sourcee. Moyenne du cycle le plus court et du cycle le plus long d'un seuil de 50 m a l'autre : h/tan(angle max approche) + course totale + h/tan(angle max decollage) pour le court, angles nominaux pour le long. Choix du 2026-08-18 : les longueurs publiees varient trop d'une source a l'autre pour servir de reference partagee entre les outils.",
+  "dette": "Commentaires de dette resorbes le 2026-08-18 : les formules qui decrivaient l'historique de migration (\"Repris du profil de vol v19\", \"Source a retrouver\") sont remplacees par ce qui est reellement su de la provenance. Aucune valeur ni aucun _src n'a ete modifie a cette occasion. Un commentaire disant \"sans reference\" ou \"provenance inconnue\" en face d'un _src constructeur ou publie signale une contradiction a arbitrer, pas une erreur d'ecriture.",
+  "moteur": "moteur_nombre et moteur_reference sont saisis ; puissance_ch reste la puissance TOTALE, tous moteurs. Le champ d'affichage enginePower est desormais DERIVE : le bloc de calcul partage le recompose sous la forme \"<nombre> x <unitaire> ch (<reference>)\". Il ne peut donc plus contredire les valeurs numeriques, ce qui arrivait quand il etait saisi a la main."
+ },
+ "fleet": [
+  {
+   "id": "CL415",
+   "name": "Canadair CL-415",
+   "maker": "De Havilland Canada (ex-Canadair / Bombardier)",
+   "makerUrl": "https://dehavilland.com/",
+   "img": "https://upload.wikimedia.org/wikipedia/commons/c/c6/I-DPCN_at_work_03_(cropped).jpg",
+   "firstFlight": "6 décembre 1993",
+   "available": "1994 (soit 32 ans de service)",
+   "status": "service",
+   "fin_service": null,
+   "fin_service_src": "",
+   "fin_service_commentaire": "Aucune date de retrait officielle publiee. Le renouvellement par le DHC-515 est annonce sur un echeancier 2030-2040 ; la flotte cible de 16 amphibies est attendue a l'horizon 2033.",
+   "qty_n": 12,
+   "qty": "12",
+   "qtyNote": "11 réellement disponibles (Pélican 35 endommagé en 2025)",
+   "ordersFR": "Aucune — production arrêtée",
+   "ordersIntl": "Aucune — remplacé au catalogue par le DHC-515",
+   "pilots": "2",
+   "groundCrew": "≈10 à 12 (maintenance Sabena technics : 150 personnes pour toute la flotte)",
+   "masse_vide_t": 12.88,
+   "masse_vide_t_src": "constructeur",
+   "masse_vide_t_commentaire": "12 882 kg (Operating Weight Empty), manuel de vol Bombardier / De Havilland.",
+   "masse_charge_t": 21.32,
+   "masse_charge_t_src": "constructeur",
+   "masse_charge_t_commentaire": "Maximum Lift Off Weight After Scooping = 21 319 kg (47 000 lbs). La MTOW terrestre est de 19.89 t, mais c'est bien à 21.32 t qu'il s'arrache de l'eau.",
+   "puissance_ch": 4760,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "2 × 2 380 ch, Pratt & Whitney Canada PW123AF.",
+   "emptyMass": "≈12,88 t",
+   "loadedMass": "≈21,32 t à l'arrachement de l'eau",
+   "enginePower": "2 × 2 380 ch (Pratt & Whitney Canada PW123AF)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 330,
+   "vitesse_kmh_src": "constructeur",
+   "vitesse_kmh_commentaire": "330 km/h en croisière",
+   "autonomie_km": 2400,
+   "autonomie_km_src": "constructeur",
+   "autonomie_km_commentaire": "≈2 400 km",
+   "reload": 5,
+   "reload_src": "publie",
+   "reload_commentaire": "",
+   "runway": "≈1 800 m",
+   "speed": 330,
+   "range": 2400,
+   "autonomy": "≈2 400 km",
+   "speedTxt": "330 km/h en croisière",
+   "rotationRange": "≈1 200 km",
+   "approche_vitesse_kmh": 167,
+   "approche_vitesse_kmh_src": "estime",
+   "approche_vitesse_kmh_commentaire": "Approche finale vers 90 kts (1.3 Vso).",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Plan de descente nominal (standard IFR).",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Approche forte contrainte (canyon, ravines).",
+   "ecopage_vitesse_kmh": 130.0,
+   "ecopage_vitesse_kmh_src": "publie",
+   "ecopage_vitesse_kmh_commentaire": "12 s de remplissage a 70 kts (130 km/h) : donnee constructeur, confirmee par airliners.net. Roulage d'entree et dejaugeage estimes. Appareil de reference du modele.",
+   "ecopage_duree_efficace_s": 12.0,
+   "ecopage_duree_efficace_s_src": "publie",
+   "ecopage_duree_efficace_s_commentaire": "12 s de remplissage a 70 kts (130 km/h) : donnee constructeur, confirmee par airliners.net. Roulage d'entree et dejaugeage estimes. Appareil de reference du modele. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "ecopage_duree_avant_s": 1.5,
+   "ecopage_duree_avant_s_src": "estime",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 145 a 130 km/h. 12 s de remplissage a 70 kts (130 km/h) : donnee constructeur, confirmee par airliners.net. Roulage d'entree et dejaugeage estimes. Appareil de reference du modele.",
+   "ecopage_vitesse_toucher_kmh": 145.0,
+   "ecopage_vitesse_toucher_kmh_src": "estime",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Environ 78 kts, estimation.",
+   "ecopage_vitesse_rotation_kmh": 167.0,
+   "ecopage_vitesse_rotation_kmh_src": "estime",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Environ 90 kts, estimation.",
+   "decollage_vitesse_kmh": 185,
+   "decollage_vitesse_kmh_src": "publie",
+   "decollage_vitesse_kmh_commentaire": "Vitesse de montée initiale chargée (autour de 100 kts).",
+   "decollage_angle_nominal_deg": 5,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Déduit du taux de montée (1170 ft/min à 100 kts = 5.9 m/s à 51.4 m/s => angle mathématique 6.6°). Pris 5° en nominal.",
+   "decollage_angle_max_deg": 8,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Pente maximale d'évitement d'obstacle.",
+   "citerne_l": 6137,
+   "citerne_l_src": "constructeur",
+   "citerne_l_commentaire": "6 137 L (1 621 US Gal) - capacité certifiée.",
+   "tank": "6 000 L",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 90,
+   "largeur_min_m_src": "",
+   "largeur_min_m_commentaire": "1 500 m est la longueur de course usuellement citee pour écoper 6 000 L en 12 s (Wikipedia Canadair). Les sources varient : ~1 340 m annonce comme minimum, 2 000 m x 100 m x 2 m de fond decrit comme l'axe ideal par un chef de secteur Canadair de la base de Nimes. La largeur de 90 m n'est pas sourcee : ordre de grandeur.",
+   "scoop": "Écopage ET pélicandrome. Écope 6 000 L en 12 secondes sur moins de 1 000 m de plan d'eau — c'est ce qui fait sa cadence.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈22 M€ à l'acquisition française (1995-2007) ; ≈30 M€ prix catalogue Bombardier en fin de production",
+   "prix_occasion": "Marché de l'occasion quasi inexistant : les opérateurs conservent leurs cellules faute de remplacement",
+   "prix_kit": "",
+   "prix_total": "≈264 M€ pour les 12 appareils français, en valeur d'acquisition",
+   "quantite_produite_total": "95 exemplaires construits entre 1993 et 2015, dont 11 détruits en accident",
+   "quantite_en_vol_total": "≈84 cellules subsistantes dans le monde ; 12 en France, dont 2 à 3 immobilisées en maintenance lourde",
+   "cadence_production_avion": "Production arrêtée en octobre 2015. Cadence historique plafonnée à 10 appareils par an, l'assemblage de 50 000 pièces se faisant à la main",
+   "cadence_production_kit": "",
+   "comment": "Colonne vertébrale de la flotte, et son point de fragilité. Érosion continue : 15 appareils dans les années 2000, 12 aujourd'hui, 2 à 3 immobilisés en permanence en maintenance lourde. Son prédécesseur, le CL-215 (France 1re utilisatrice en 1969), a été porté au standard CL-415 puis retiré : il n'existe plus de CL-215 en service en France.",
+   "verif": "Vérifié : quantité, capacité, performance d'écopage, dates, coût unitaire, arrêt de production (Sénat, Mer et Marine, Sabena technics, feuxdeforet.fr). Non vérifié à ce jour : masses, longueur de piste, effectif au sol par appareil — chiffres constructeur usuels donnés à titre indicatif. Vérifié en complément : 95 exemplaires construits entre 1993 et 2015 dont 11 détruits en accident, prix unitaire d'acquisition française d'environ 22 M€ pour 12 appareils livrés entre 1995 et 2007, catalogue Bombardier autour de 30 M€, cadence maximale de 10 appareils par an (Wikipédia, La Presse, F. Marsaly, SDIS 10).",
+   "ecopage_duree_apres_s": 2.5,
+   "ecopage_duree_apres_s_src": "estime",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 130.0 a 167.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 57.292,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 433.333,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 103.125,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 16.0,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 594,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1773,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1425 m, angles maximaux) et le cycle le plus long (2120 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW123AF",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": ""
+  },
+  {
+   "id": "DASH8",
+   "name": "De Havilland Dash 8 Q400MR",
+   "maker": "De Havilland Canada (conversion Cascade Aerospace)",
+   "makerUrl": "https://dehavilland.com/",
+   "img": "https://www.netpompiers.fr/wp-content/uploads/phototheques/aeriens/041124bb30.jpg",
+   "firstFlight": "1998 (Q400) · version MR à partir de 2005 en France",
+   "available": "2005 en France (21 ans de service)",
+   "status": "service",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait annoncee. La cellule Q400 n'est plus produite, ce qui pose la question du renouvellement a terme.",
+   "qty_n": 8,
+   "qty": "8",
+   "qtyNote": "Tous basés à Nîmes-Garons (BASC) — 6 acquis récemment",
+   "ordersFR": "Aucune commande supplémentaire annoncée",
+   "ordersIntl": "—",
+   "pilots": "2",
+   "groundCrew": "≈8 à 10, plus l'équipe pélicandrome au sol (3 minimum : 2 équipiers PEL1 + 1 chef PEL2)",
+   "masse_vide_t": 17.8,
+   "masse_vide_t_src": "",
+   "masse_vide_t_commentaire": "Reprise du champ d'affichage emptyMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "masse_charge_t": 30,
+   "masse_charge_t_src": "",
+   "masse_charge_t_commentaire": "Reprise du champ d'affichage loadedMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "puissance_ch": 10142,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "2 × 5 071 ch (Pratt & Whitney Canada PW150A) — statut de source hérité de la v5, où il valait pour la ligne de texte entière, non revérifié champ par champ",
+   "emptyMass": "≈17,8 t",
+   "loadedMass": "≈30 t au décollage",
+   "enginePower": "2 × 5 071 ch (Pratt & Whitney Canada PW150A)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 550,
+   "vitesse_kmh_commentaire": "≈550 km/h — deux fois la vitesse de projection d'un Canadair",
+   "autonomie_km": 2500,
+   "autonomie_km_commentaire": "≈2 500 km",
+   "reload": 8,
+   "runway": "≈1 400 m",
+   "speed": 550,
+   "range": 2500,
+   "autonomy": "≈2 500 km",
+   "speedTxt": "≈550 km/h — deux fois la vitesse de projection d'un Canadair",
+   "rotationRange": "≈1 250 km",
+   "citerne_l": 10000,
+   "citerne_l_commentaire": "10 000 L (retardant ou eau)",
+   "tank": "10 000 L (retardant ou eau)",
+   "mode_recharge": false,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": null,
+   "scoop": "PAS d'écopage. Strictement dépendant des pélicandromes au sol — c'est toute la raison d'être du réseau.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "Non publié pour la cellule Q400 neuve — la production est arrêtée",
+   "prix_occasion": "Marché de l'occasion actif : la cellule Q400 régionale est courante",
+   "prix_kit": "Non publié — kit ventral « banane » de 10 000 L installé par Conair",
+   "prix_total": "Non publié",
+   "quantite_produite_total": "Plus de 600 Dash 8 Q400 construits, toutes versions confondues ; une poignée seulement convertis en Q400MR",
+   "quantite_en_vol_total": "8 en France ; quelques autres exploités par Conair au Canada",
+   "cadence_production_avion": "Cellule Q400 : production arrêtée",
+   "cadence_production_kit": "Conversion MR réalisée à la demande par Conair Aerial Firefighting, aucune cadence de série",
+   "comment": "Vecteur du guet aérien armé (GAAr) et de l'attaque des feux naissants. Rallie Nîmes-Bordeaux en 1 h, contre 2 h pour un Canadair. Peut aussi transporter 9 t de fret ou des dizaines de passagers. Sa dépendance totale au réseau de pélicandromes est le facteur structurant de la couverture territoriale.",
+   "verif": "Vérifié : quantité (8), capacité 10 000 L, base de Nîmes, absence d'écopage, ratio de vitesse vs Canadair, remplissage 6-10 min (Sénat, CNEWS, ministère de l'Intérieur, préfecture des Vosges). Non vérifié à ce jour : vitesse exacte en km/h (déduite du ratio Sénat), masses, longueur de piste, prix.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW150A",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": ""
+  },
+  {
+   "id": "BE200",
+   "name": "Beechcraft King Air B200",
+   "maker": "Textron Aviation (Beechcraft)",
+   "makerUrl": "https://beechcraft.txtav.com/",
+   "img": "https://cdn.jetphotos.com/full/5/1174010_1764148949.jpg",
+   "firstFlight": "1972 (King Air 200)",
+   "available": "En service dans la flotte française de longue date",
+   "status": "service",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 3,
+   "qty": "3",
+   "qtyNote": "Indicatifs « Bengale » / « Icare »",
+   "ordersFR": "—",
+   "ordersIntl": "—",
+   "pilots": "2",
+   "groundCrew": "≈4 à 6",
+   "masse_vide_t": 3.7,
+   "masse_vide_t_src": "",
+   "masse_vide_t_commentaire": "≈3,7 t — ordre de grandeur King Air B200. Provenance d'origine inconnue.",
+   "masse_charge_t": 5.7,
+   "masse_charge_t_src": "",
+   "masse_charge_t_commentaire": "≈5,7 t MTOW — ordre de grandeur King Air B200. Provenance d'origine inconnue.",
+   "puissance_ch": 1700,
+   "puissance_ch_src": "publie",
+   "puissance_ch_commentaire": "CORRECTION 2026-07-26 : la fiche portait par erreur la motorisation du Beriev Be-200 (2 × 7 500 kgf, D-436TP), collision d'identifiants BE200. Le King Air B200 vole avec 2 × PT6A-42 de 850 ch. Valeur usuelle publiée, à confirmer sur fiche Textron/Beechcraft.",
+   "emptyMass": "≈3,7 t",
+   "loadedMass": "≈5,7 t au décollage",
+   "enginePower": "2 × 850 ch (Pratt & Whitney Canada PT6A-42)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 520,
+   "vitesse_kmh_commentaire": "≈520 km/h",
+   "autonomie_km": 3300,
+   "autonomie_km_commentaire": "≈3 300 km",
+   "reload": 0,
+   "runway": "≈900 m",
+   "speed": 520,
+   "range": 3300,
+   "autonomy": "≈3 300 km",
+   "speedTxt": "≈520 km/h",
+   "rotationRange": "≈1 650 km",
+   "citerne_l": 0,
+   "citerne_l_commentaire": "0 L — aucune capacité de largage",
+   "tank": "0 L — aucune capacité de largage",
+   "mode_recharge": false,
+   "compatible_pelicandrome": false,
+   "largeur_min_m": null,
+   "scoop": "Sans objet — n'emporte pas d'eau.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "≈6,7 M$ pour un King Air 260 neuf, la version actuelle de la lignée",
+   "prix_occasion": "1,15 à 3,6 M$ selon l'année pour un B200 d'occasion",
+   "prix_kit": "",
+   "prix_total": "Non publié pour les 3 appareils français",
+   "quantite_produite_total": "1 142 King Air B200 produits ; 4 442 exemplaires pour toute la famille Super King Air fin 2025",
+   "quantite_en_vol_total": "Plusieurs milliers en service dans le monde, civils et militaires ; 3 à la Sécurité civile",
+   "cadence_production_avion": "En production continue depuis 1972 sous la désignation King Air 260",
+   "cadence_production_kit": "",
+   "comment": "N'est PAS un bombardier d'eau : c'est le chef de mission aérien. Il coordonne les largages, assure la surveillance et le GAAr, et fait le lien radio avec le commandant des opérations de secours au sol. Inclus ici parce qu'aucune rotation de bombardier ne se conçoit sans lui — mais il ne consomme ni eau ni retardant, et ses cercles d'isochrone n'ont pas le même sens.",
+   "verif": "Vérifié : quantité (3), rôle de coordination, absence de capacité de largage (Sénat, CNEWS, feuxdeforet.fr). Non vérifié à ce jour : vitesse, autonomie, masses, prix — valeurs constructeur usuelles. Vérifié en complément : 1 142 King Air B200 produits, 4 442 exemplaires pour la famille Super King Air fin 2025, occasion de 1,15 à 3,6 M$, King Air 260 neuf autour de 6,7 M$ (AvBuyer, Controller, GlobalAir, Wikipédia). Ces prix sont ceux de l'avion civil de base, hors équipements de mission de la Sécurité civile, non publiés.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PT6A-42",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": ""
+  },
+  {
+   "id": "AT802",
+   "name": "Air Tractor AT-802F",
+   "maker": "Air Tractor Inc.",
+   "makerUrl": "https://airtractor.com/",
+   "img": "https://tse3.mm.bing.net/th/id/OIP.MnNdXkQHfkDo1Z0bWTmIogHaD8?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
+   "firstFlight": "1990 (AT-802)",
+   "available": "Depuis les années 1990",
+   "status": "service",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "Variable",
+   "qtyNote": "Non détenus par l'État : exploités sous contrat par des SDIS et opérateurs privés (ABEL de l'Hérault, renforts saisonniers)",
+   "ordersFR": "Pas de flotte d'État",
+   "ordersIntl": "Nombreuses (Espagne, Portugal, Grèce, USA)",
+   "pilots": "1",
+   "groundCrew": "≈3 à 4",
+   "masse_vide_t": 3.2,
+   "masse_vide_t_src": "constructeur",
+   "masse_vide_t_commentaire": "7,3 t MTOW amphibie (Fire Boss LLC / Air Tractor). Masse à vide flotteurs compris ≈3,2 t.",
+   "masse_charge_t": 7.3,
+   "masse_charge_t_src": "constructeur",
+   "masse_charge_t_commentaire": "7,3 t MTOW amphibie (Fire Boss LLC / Air Tractor). Masse à vide flotteurs compris ≈3,2 t.",
+   "puissance_ch": 1600,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "1 × 1 600 ch, PT6A-67F — fiche constructeur.",
+   "emptyMass": "≈3,2 t",
+   "loadedMass": "≈7,3 t au décollage",
+   "enginePower": "1 × 1 600 ch (Pratt & Whitney Canada PT6A-67F, version pompier Conair)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 350,
+   "vitesse_kmh_commentaire": "≈350 km/h",
+   "autonomie_km": 1250,
+   "autonomie_km_commentaire": "≈1 250 km",
+   "reload": 4,
+   "runway": "≈800 m",
+   "speed": 350,
+   "range": 1250,
+   "autonomy": "≈1 250 km",
+   "speedTxt": "≈350 km/h",
+   "rotationRange": "≈625 km",
+   "citerne_l": 3100,
+   "citerne_l_commentaire": "≈3 100 L",
+   "tank": "≈3 100 L",
+   "mode_recharge": false,
+   "compatible_pelicandrome": true,
+   "scoop": "PAS d'ecopage sur la version terrestre : rechargement au pelicandrome ou sur base au sol. La variante amphibie a flotteurs est le Fire Boss, fiche AT802FB.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈2 à 3 M€ neuf",
+   "prix_occasion": "Marché d'occasion actif, l'appareil étant très répandu en usage agricole",
+   "prix_kit": "Le kit flotteurs Fire Boss, qui donne la capacité d'écopage, est un équipement distinct",
+   "prix_total": "Selon les contrats départementaux — aucun appareil détenu par l'État",
+   "quantite_produite_total": "Plus de 3 000 Air Tractor toutes versions ; plusieurs centaines d'AT-802",
+   "quantite_en_vol_total": "Plusieurs centaines dans le monde ; en France, quelques unités sous contrat saisonnier",
+   "cadence_production_avion": "En production continue chez Air Tractor Inc. (Olney, Texas)",
+   "cadence_production_kit": "",
+   "comment": "Le petit vecteur souple et bon marché : il se pose là où les gros ne vont pas, et coûte dix fois moins qu'un Canadair. Contrepartie : trois fois moins d'eau qu'un CL-415, six fois moins qu'un ATR. C'est le type d'appareil observé en renfort sur les feux de Loire-Atlantique. Cette fiche decrit la cellule TERRESTRE, celle reellement louee en France sous l'indicatif Abel. La version amphibie a flotteurs fait l'objet de la fiche AT802FB.",
+   "verif": "Non vérifié à ce jour : quasi toutes les valeurs chiffrées (prix, masses, capacité, autonomie) sont des ordres de grandeur constructeur usuels. Vérifié seulement : le principe d'exploitation sous contrat départemental et l'existence de la version amphibie Fire Boss.",
+   "moteur_nombre": 1,
+   "moteur_reference": "Pratt & Whitney Canada PT6A-67F",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": "Version pompier Conair."
+  },
+  {
+   "id": "AT802FB",
+   "name": "Air Tractor AT-802F Fire Boss",
+   "maker": "Air Tractor Inc.",
+   "makerUrl": "https://airtractor.com/",
+   "img": "https://tse3.mm.bing.net/th/id/OIP.MnNdXkQHfkDo1Z0bWTmIogHaD8?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
+   "firstFlight": "1990 (AT-802)",
+   "available": "Depuis les années 1990",
+   "status": "service",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Aucun exemplaire en France : le Fire Boss est exploite en Espagne, au Portugal, en Grece et aux Etats-Unis.",
+   "ordersFR": "Pas de flotte d'État",
+   "ordersIntl": "Nombreuses (Espagne, Portugal, Grèce, USA)",
+   "pilots": "1",
+   "groundCrew": "≈3 à 4",
+   "masse_vide_t": 3.2,
+   "masse_vide_t_src": "constructeur",
+   "masse_vide_t_commentaire": "7,3 t MTOW amphibie (Fire Boss LLC / Air Tractor). Masse à vide flotteurs compris ≈3,2 t.",
+   "masse_charge_t": 7.3,
+   "masse_charge_t_src": "constructeur",
+   "masse_charge_t_commentaire": "7,3 t MTOW amphibie (Fire Boss LLC / Air Tractor). Masse à vide flotteurs compris ≈3,2 t.",
+   "puissance_ch": 1600,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "1 × 1 600 ch, PT6A-67F — fiche constructeur.",
+   "emptyMass": "≈3,2 t",
+   "loadedMass": "≈7,3 t à l'arrachement de l'eau",
+   "enginePower": "1 × 1 600 ch (Pratt & Whitney Canada PT6A-67F, version pompier Conair)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 350,
+   "vitesse_kmh_commentaire": "≈350 km/h",
+   "autonomie_km": 1250,
+   "autonomie_km_commentaire": "≈1 250 km",
+   "reload": 4,
+   "runway": "≈800 m",
+   "speed": 350,
+   "range": 1250,
+   "autonomy": "≈1 250 km",
+   "speedTxt": "≈350 km/h",
+   "rotationRange": "≈625 km",
+   "approche_vitesse_kmh": 185.2,
+   "approche_vitesse_kmh_src": "estime",
+   "approche_vitesse_kmh_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_nominal_deg": 4,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_max_deg": 8,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "ecopage_vitesse_kmh": 135.0,
+   "ecopage_vitesse_kmh_src": "publie",
+   "ecopage_vitesse_kmh_commentaire": "800 gallons (3 028 L) ecopes en 12 a 15 secondes, donnee Fire Boss LLC : 13,5 s retenus au milieu de la fourchette. Roulage d'entree et dejaugeage raccourcis par rapport au CL-415, l'appareil pesant trois fois moins.",
+   "ecopage_duree_efficace_s": 13.5,
+   "ecopage_duree_efficace_s_src": "publie",
+   "ecopage_duree_efficace_s_commentaire": "800 gallons (3 028 L) ecopes en 12 a 15 secondes, donnee Fire Boss LLC : 13,5 s retenus au milieu de la fourchette. Roulage d'entree et dejaugeage raccourcis par rapport au CL-415, l'appareil pesant trois fois moins. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "decollage_vitesse_kmh": 192.0,
+   "decollage_vitesse_kmh_src": "estime",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "decollage_angle_nominal_deg": 5,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "decollage_angle_max_deg": 7,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "citerne_l": 3100,
+   "citerne_l_commentaire": "≈3 100 L",
+   "tank": "≈3 100 L",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 60,
+   "largeur_min_m_commentaire": "Le Fire Boss sur flotteurs ecope sur une distance nettement plus courte qu'un Canadair du fait de sa masse. 1 000 m est un ordre de grandeur : NON VERIFIE sur source constructeur.",
+   "scoop": "Ecopage sur plan d'eau grace aux flotteurs, et rechargement au pelicandrome.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈2 à 3 M€ neuf",
+   "prix_occasion": "Marché d'occasion actif, l'appareil étant très répandu en usage agricole",
+   "prix_kit": "Le kit flotteurs Fire Boss, qui donne la capacité d'écopage, est un équipement distinct",
+   "prix_total": "Selon les contrats départementaux — aucun appareil détenu par l'État",
+   "quantite_produite_total": "Plus de 3 000 Air Tractor toutes versions ; plusieurs centaines d'AT-802",
+   "quantite_en_vol_total": "Plusieurs centaines dans le monde ; en France, quelques unités sous contrat saisonnier",
+   "cadence_production_avion": "En production continue chez Air Tractor Inc. (Olney, Texas)",
+   "cadence_production_kit": "",
+   "comment": "Version amphibie de l'AT-802F, montee sur flotteurs Wipline. Ecope en vol sur un plan d'eau court la ou un Canadair exige 1 500 m. ABSENTE DE FRANCE : aucun exemplaire detenu ni loue par la Securite civile. Cellule de depart identique a la fiche AT802.",
+   "verif": "Verifie : l'existence de la version amphibie Fire Boss et son absence de France. Non verifie : toutes les valeurs chiffrees, heritees de la fiche AT-802F terrestre et non corrigees de la penalite de masse et de trainee des flotteurs.",
+   "ecopage_duree_avant_s": 1.0,
+   "ecopage_duree_avant_s_src": "estime",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 151 a 135 km/h. 800 gallons (3 028 L) ecopes en 12 a 15 secondes, donnee Fire Boss LLC : 13,5 s retenus au milieu de la fourchette. Roulage d'entree et dejaugeage raccourcis par rapport au CL-415, l'appareil pesant trois fois moins.",
+   "ecopage_vitesse_toucher_kmh": 151.0,
+   "ecopage_vitesse_toucher_kmh_src": "estime",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 173.0,
+   "ecopage_vitesse_rotation_kmh_src": "estime",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_duree_apres_s": 2.0,
+   "ecopage_duree_apres_s_src": "estime",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 135.0 a 173.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 39.722,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 506.25,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 85.556,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 16.5,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 632,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1657,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1395 m, angles maximaux) et le cycle le plus long (1919 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 1,
+   "moteur_reference": "Pratt & Whitney Canada PT6A-67F",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": "Version pompier Conair."
+  },
+  {
+   "id": "DHC515",
+   "name": "De Havilland DHC-515 Firefighter",
+   "maker": "De Havilland Canada",
+   "makerUrl": "https://dehavilland.com/",
+   "img": "https://th.bing.com/th/id/R.6d265feaa2c4b37863f92e6563e345bf?rik=%2ff8ssYIQTIObvg&riu=http%3a%2f%2fwww.aerotendencias.com%2fwp-content%2fuploads%2f2022%2f04%2fCL-515-scaled.jpg&ehk=QQqPB%2f%2bWK1N5sDDN0MWc0x6EWDnWuF8DdEYnnQh8mn4%3d&risl=&pid=ImgRaw&r=0",
+   "firstFlight": "Non encore effectué",
+   "available": "2028 (premières livraisons françaises) — annoncé initialement pour 2026",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "4 commandés",
+   "qtyNote": "2 commandés en 2024 (livraison avril et novembre 2028) + 2 commandés en juin 2026 (livraison 2032-2033)",
+   "ordersFR": "4 fermes",
+   "ordersIntl": "Commandes européennes multiples ; la Grèce recevra le 1er exemplaire avant la France",
+   "pilots": "2",
+   "groundCrew": "≈10 à 12 (estimation par analogie CL-415)",
+   "masse_charge_t": 22,
+   "masse_charge_t_src": "estime",
+   "masse_charge_t_commentaire": "Non publiée par De Havilland : relevée du CL-415 (19,9 t) majorée d'environ 2 t pour la citerne portée à 7 000 L. À remplacer dès publication constructeur.",
+   "puissance_ch": 4760,
+   "puissance_ch_src": "estime",
+   "puissance_ch_commentaire": "Reprise du CL-415 (PW123AF) : De Havilland n'a pas encore publié la motorisation définitive. Non confirmée par le constructeur.",
+   "emptyMass": "Non publié",
+   "loadedMass": "≈22 t à l'arrachement de l'eau",
+   "enginePower": "2 × ≈2 380 ch (Pratt & Whitney Canada PW123AF, repris du CL-415)",
+   "enginePowerSrc": "estimé",
+   "vitesse_kmh": 350,
+   "vitesse_kmh_commentaire": "≈350 km/h",
+   "autonomie_km": 2400,
+   "autonomie_km_commentaire": "≈2 400 km",
+   "reload": 5,
+   "runway": "≈1 800 m",
+   "speed": 350,
+   "range": 2400,
+   "autonomy": "≈2 400 km",
+   "speedTxt": "≈350 km/h",
+   "rotationRange": "≈1 200 km",
+   "approche_vitesse_kmh": 166.7,
+   "approche_vitesse_kmh_src": "estime",
+   "approche_vitesse_kmh_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "ecopage_vitesse_kmh": 132.0,
+   "ecopage_vitesse_kmh_src": "analogie",
+   "ecopage_vitesse_kmh_commentaire": "Coque et ecopes du CL-415, citerne portee de 6 137 a 7 000 L : a debit d'ecope inchange (511 L/s), le remplissage passe de 12 a 14 s. Vitesse relevee de 130 a 132 km/h, la vitesse de decrochage variant comme la racine de la masse (22,0 / 21,32 t). Rien n'est publie par De Havilland.",
+   "ecopage_duree_efficace_s": 14.0,
+   "ecopage_duree_efficace_s_src": "analogie",
+   "ecopage_duree_efficace_s_commentaire": "Coque et ecopes du CL-415, citerne portee de 6 137 a 7 000 L : a debit d'ecope inchange (511 L/s), le remplissage passe de 12 a 14 s. Vitesse relevee de 130 a 132 km/h, la vitesse de decrochage variant comme la racine de la masse (22,0 / 21,32 t). Rien n'est publie par De Havilland. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "decollage_vitesse_kmh": 188.0,
+   "decollage_vitesse_kmh_src": "analogie",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "decollage_angle_nominal_deg": 3.8,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "decollage_angle_max_deg": 7.5,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "citerne_l": 7000,
+   "citerne_l_commentaire": "≈7 000 L",
+   "tank": "≈7 000 L",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 90,
+   "largeur_min_m_commentaire": "Successeur direct du CL-415, meme formule amphibie. Valeurs reprises du CL-415 : NON VERIFIEES, l'appareil n'a pas vole.",
+   "scoop": "Écopage ET pélicandrome — successeur direct du CL-415.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈100 M€ l'unité — la commande française de juin 2026 porte sur 2 appareils pour près de 200 M€",
+   "prix_occasion": "Sans objet — appareil non encore livré",
+   "prix_kit": "",
+   "prix_total": "≈400 M€ pour les 4 appareils commandés par la France",
+   "quantite_produite_total": "Aucun exemplaire livré à ce jour",
+   "quantite_en_vol_total": "Aucun",
+   "cadence_production_avion": "Mise en production annoncée à partir de 2026, premières livraisons européennes repoussées à 2028",
+   "cadence_production_kit": "",
+   "comment": "Le remplaçant officiel. Cible : porter la flotte amphibie à 16 appareils. Mais le calendrier dérape continûment — annoncé 2026, repoussé à 2028, et les deux derniers exemplaires ne seront pas là avant 2032-2033. Sur un aléa qui se dilate d'ici 2050, c'est un train de retard structurel.",
+   "verif": "Vérifié : nombre commandé, dates de livraison, montant de ≈200 M€ pour deux appareils, cible de 16 amphibies, glissement du calendrier, priorité grecque (CNEWS, Mer et Marine, ministère de l'Intérieur juin 2026). Non vérifié à ce jour : capacité exacte de la soute, vitesse, autonomie, masses — l'appareil n'a pas volé.",
+   "ecopage_duree_avant_s": 1.5,
+   "ecopage_duree_avant_s_src": "analogie",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 147 a 132 km/h. Coque et ecopes du CL-415, citerne portee de 6 137 a 7 000 L : a debit d'ecope inchange (511 L/s), le remplissage passe de 12 a 14 s. Vitesse relevee de 130 a 132 km/h, la vitesse de decrochage variant comme la racine de la masse (22,0 / 21,32 t). Rien n'est publie par De Havilland.",
+   "ecopage_vitesse_toucher_kmh": 147.0,
+   "ecopage_vitesse_toucher_kmh_src": "analogie",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 170.0,
+   "ecopage_vitesse_rotation_kmh_src": "analogie",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_duree_apres_s": 2.5,
+   "ecopage_duree_apres_s_src": "analogie",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 132.0 a 170.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 58.125,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 513.333,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 104.861,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 18.0,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 676,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1957,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1532 m, angles maximaux) et le cycle le plus long (2383 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW123AF",
+   "moteur_reference_src": "estimé",
+   "moteur_reference_commentaire": "Repris du CL-415."
+  },
+  {
+   "id": "F100",
+   "name": "Hynaero Frégate-F100",
+   "maker": "Hynaero (partenariat stratégique avec Airbus Defence and Space)",
+   "makerUrl": "https://hynaero.com/",
+   "img": "https://aeroin.net/wp-content/uploads/2025/03/airbus-hynaero-fregate-f-100.jpeg",
+   "firstFlight": "Prévu 2029-2030",
+   "available": "Entrée en service espérée 2031",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Aucun exemplaire — programme en développement",
+   "ordersFR": "Aucune commande ferme — lettre d'intention de la DGSCGC",
+   "ordersIntl": "Aucune commande ferme",
+   "pilots": "2 (fly-by-wire)",
+   "groundCrew": "Non publié",
+   "masse_charge_t": 30,
+   "masse_charge_t_src": "estime",
+   "masse_charge_t_commentaire": "≈30 t : extrapolée. Le ratio eau/MTOW n'est pas proportionnel entre 8 et 10 t d'emport (structure, carburant). Aucune masse publiée par Hynaero.",
+   "puissance_ch": 10000,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "2 × 5 000 ch : famille PW150 confirmée par Hynaero (communication publique 2025-2026).",
+   "emptyMass": "Non publié",
+   "loadedMass": "≈30 t à l'arrachement de l'eau",
+   "enginePower": "2 × 5 000 ch (Pratt & Whitney Canada PW150) — modèle confirmé",
+   "enginePowerSrc": "confirmé",
+   "vitesse_kmh": 400,
+   "vitesse_kmh_commentaire": "250 nœuds, soit ≈460 km/h",
+   "autonomie_km": 1600,
+   "autonomie_km_commentaire": "≈2 500 km en convoyage",
+   "reload": 8,
+   "runway": "Non publié",
+   "speed": 400,
+   "range": 1600,
+   "autonomy": "≈2 500 km en convoyage",
+   "speedTxt": "250 nœuds, soit ≈460 km/h",
+   "rotationRange": "Plus de 3 h de combat sur feu à 250 km de la base",
+   "approche_vitesse_kmh": 185.2,
+   "approche_vitesse_kmh_src": "estime",
+   "approche_vitesse_kmh_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "ecopage_vitesse_kmh": 147.0,
+   "ecopage_vitesse_kmh_src": "concept",
+   "ecopage_vitesse_kmh_commentaire": "12 s annonces par Hynaero pour 10 000 L, soit 833 L/s, nettement au-dessus des 511 L/s du CL-415 : chiffre de communication, non verifiable. Dejaugeage allonge a 3 s, l'appareil sortant de l'eau a 30 t.",
+   "ecopage_duree_efficace_s": 12.0,
+   "ecopage_duree_efficace_s_src": "concept",
+   "ecopage_duree_efficace_s_commentaire": "12 s annonces par Hynaero pour 10 000 L, soit 833 L/s, nettement au-dessus des 511 L/s du CL-415 : chiffre de communication, non verifiable. Dejaugeage allonge a 3 s, l'appareil sortant de l'eau a 30 t. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "decollage_vitesse_kmh": 209.0,
+   "decollage_vitesse_kmh_src": "concept",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "decollage_angle_nominal_deg": 4,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "decollage_angle_max_deg": 8,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "citerne_l": 10000,
+   "citerne_l_commentaire": "10 000 L (10 tonnes)",
+   "tank": "10 000 L (10 tonnes)",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 60,
+   "largeur_min_m_commentaire": "Hynaero annonce un écopage sur 800 m de plan d'eau, argument central du programme.",
+   "scoop": "Écopage — c'est l'argument central du programme : « seule la capacité d'écopage permet un taux élevé de rotations ».",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈30 M€, ordre de grandeur cité au Parlement pour cette classe d'appareils",
+   "prix_occasion": "Sans objet — appareil non encore construit",
+   "prix_kit": "",
+   "prix_total": "Coût du programme : ≈1 milliard d'euros de développement",
+   "quantite_produite_total": "Aucun exemplaire",
+   "quantite_en_vol_total": "Aucun",
+   "cadence_production_avion": "Assemblage prévu à Istres, plus de 2 500 emplois annoncés ; aucune cadence publiée",
+   "cadence_production_kit": "",
+   "comment": "Un quart plus grand qu'un Canadair, pour 10 t d'eau contre 6. Soutenu par la région Nouvelle-Aquitaine, l'État, la Région Sud et la Commission européenne, avec Airbus en appui conception-certification-maintenance. Le pari de la souveraineté industrielle — mais rien ne vole avant 2029 au mieux, et l'appareil n'est encore qu'une maquette numérique.",
+   "verif": "Vérifié : capacité 10 t, vitesse 250 kt, autonomie 4 h, 2 500 km de convoyage, calendrier 2029-2031, coût programme ≈1 Md€, partenariat Airbus, sites Mérignac puis Istres (Hynaero, Airbus, Wikipédia, CNEWS, Aerobuzz). Attention : les valeurs de vitesse et d'autonomie retenues dans le moteur de calcul sont celles héritées de la version précédente du site (400 km/h / 1 600 km), plus conservatrices que les annonces constructeur.",
+   "masse_commentaire": "Masse au décollage non publiée. Estimée à ≈30 t par comparaison d'appareils existants à 8 et 10 t d'emport, dont le rapport eau/MTOW n'est pas proportionnel.",
+   "ecopage_duree_avant_s": 1.5,
+   "ecopage_duree_avant_s_src": "concept",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 164 a 147 km/h. 12 s annonces par Hynaero pour 10 000 L, soit 833 L/s, nettement au-dessus des 511 L/s du CL-415 : chiffre de communication, non verifiable. Dejaugeage allonge a 3 s, l'appareil sortant de l'eau a 30 t.",
+   "ecopage_vitesse_toucher_kmh": 164.0,
+   "ecopage_vitesse_toucher_kmh_src": "concept",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 189.0,
+   "ecopage_vitesse_rotation_kmh_src": "concept",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_duree_apres_s": 3.0,
+   "ecopage_duree_apres_s_src": "concept",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 147.0 a 189.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 64.792,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 490.0,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 140.0,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 16.5,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 695,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1945,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1526 m, angles maximaux) et le cycle le plus long (2364 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW150",
+   "moteur_reference_src": "confirmé",
+   "moteur_reference_commentaire": "Modèle confirmé."
+  },
+  {
+   "id": "ATR72",
+   "name": "Kepplair 72 « Forest Keeper » (ATR 72)",
+   "maker": "Kepplair Evolution (Toulouse) — fondée en 2012 par David Joubert et Dominique Legendre",
+   "makerUrl": "https://kepplair-evolution.com/",
+   "img": "https://www.defesanet.com.br/wp-content/uploads/2025/11/20251106-0007-DefesaNet-AN-Skybot-FYI.jpg",
+   "firstFlight": "Prototype ATR 72 cargo reçu à Toulouse-Blagnac à l'été 2026 · premiers largages fin 2026 / début 2027",
+   "available": "Certification EASA visée en 2027 · premières livraisons annoncées avant la saison des feux 2027",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Aucune commande ferme — 18 lettres d'intention (300 à 400 M€) juridiquement non engageantes, dont 10 kits pour Corsica Technics",
+   "ordersFR": "Aucune commande ferme",
+   "ordersIntl": "Aucune commande ferme — uniquement des lettres d'intention",
+   "pilots": "2",
+   "groundCrew": "Non publié",
+   "puissance_ch": 5500,
+   "puissance_ch_src": "analogie",
+   "puissance_ch_commentaire": "2 × 2 750 ch (Pratt & Whitney Canada PW127) — cellule ATR 72 — statut hérité : analogie",
+   "emptyMass": "13.5T (estimé)",
+   "loadedMass": "23T (estimé)",
+   "enginePower": "2 × 2 750 ch (Pratt & Whitney Canada PW127) — cellule ATR 72",
+   "enginePowerSrc": "analogie",
+   "vitesse_kmh": 590,
+   "vitesse_kmh_commentaire": "≈590 km/h",
+   "autonomie_km": 2300,
+   "autonomie_km_commentaire": "≈2 300 km",
+   "reload": 10,
+   "runway": "≈1 300 m",
+   "speed": 590,
+   "range": 2300,
+   "autonomy": "≈2 300 km",
+   "speedTxt": "≈450 km/h",
+   "rotationRange": "≈1 150 km",
+   "citerne_l": 7500,
+   "citerne_l_commentaire": "7,5 m³ (7,5 t)",
+   "tank": "7 500 L (7,5 t) — et non 10 à 12 t comme je l'avais estimé",
+   "mode_recharge": false,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": null,
+   "scoop": "PAS d'écopage — ravitaillement au sol exclusivement, donc dépendance totale aux pélicandromes.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "25M€",
+   "prix_occasion": "autour de 5 - 8M€ pour les ancienne version, 18 pour la plus récente.",
+   "prix_kit": "≈10 M€ (? estimé)",
+   "prix_total": "≈25 M€ l'ensemble converti, déduit des 18 lettres d'intention portant sur 300 à 400 M€",
+   "quantite_produite_total": "Prototype ATR 72 cargo reçu à Toulouse-Blagnac à l'été 2026. plus de 1700 ATR civil produit au total.",
+   "quantite_en_vol_total": "1200 civil. maintenance assurée sur les 5 continents.",
+   "cadence_production_avion": "Aucune chaîne neuve à créer : le rythme dépend du marché de l'ATR 72 d'occasion (30 / an neuf)",
+   "cadence_production_kit": "Conversion assurée par Aerotec & Concept ; certification EASA visée en 2027",
+   "comment": "La voie pragmatique, et la plus avancée des trois projets français : ne pas concevoir d'avion, mais convertir une cellule existante et déjà certifiée. Système de largage KEDS de Trotter Controls (concepteur des portes à débit constant des Air Tractor), développé avec l'Institut de mécanique des fluides de Toulouse. Multi-rôle : bombardier, fret, évacuation sanitaire. Contrepartie doctrinale décisive : sans écopage, il réclame un réseau de pélicandromes dense — celui-là même dont le nord du pays manque.",
+   "verif": "Vérifié : capacité de 7,5 t, ravitaillement au sol, absence de commande ferme, 18 lettres d'intention pour 300-400 M€ explicitement non engageantes, LOI Corsica Technics pour 10 kits, calendrier prototype/certification, financements, partenaires industriels (Kepplair, Aerospace Valley, Aerobuzz, L'Essentiel de l'Éco, Wikipédia, ICI Corse). Non vérifié à ce jour : vitesse, autonomie, masses, longueur de piste — le prototype n'a pas encore volé en configuration bombardier.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW127",
+   "moteur_reference_src": "analogie",
+   "moteur_reference_commentaire": "Cellule ATR 72."
+  },
+  {
+   "id": "FF72",
+   "name": "Positive Aviation FF72",
+   "maker": "Positive Aviation (Toulouse)",
+   "makerUrl": "https://www.positive-aviation.com/",
+   "img": "https://aviationweek.com/sites/default/files/styles/crop_freeform/public/2026-04/fire-1_positive_aviation_promo.jpg?itok=ZHlrejuC",
+   "firstFlight": "Non effectué",
+   "available": "Non déterminée",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Aucun exemplaire opérationnel",
+   "ordersFR": "Aucune — lettre d'intention de la DGSCGC",
+   "ordersIntl": "Aucune connue",
+   "pilots": "2",
+   "groundCrew": "Non publié",
+   "masse_charge_t": 23,
+   "masse_charge_t_src": "analogie",
+   "masse_charge_t_commentaire": "MTOW de la cellule ATR 72 (23 t) : analogie, la version pompier n'étant ni certifiée ni pesée publiquement.",
+   "puissance_ch": 5500,
+   "puissance_ch_src": "estime",
+   "puissance_ch_commentaire": "2 × PW127 en base ATR 72 (~2×2 750 ch). Une remotorisation est évoquée : valeur à confirmer.",
+   "emptyMass": "Non publié",
+   "loadedMass": "≈23 t au décollage",
+   "enginePower": "2 × 2 750 ch (Pratt & Whitney Canada PW127) — cellule ATR 72",
+   "enginePowerSrc": "analogie",
+   "vitesse_kmh": 450,
+   "vitesse_kmh_commentaire": "≈450 km/h",
+   "autonomie_km": 2300,
+   "autonomie_km_commentaire": "≈2 300 km",
+   "reload": 10,
+   "runway": "≈1 300 m",
+   "speed": 450,
+   "range": 2300,
+   "autonomy": "≈2 300 km",
+   "speedTxt": "≈450 km/h",
+   "rotationRange": "≈1 150 km",
+   "citerne_l": 0,
+   "citerne_l_commentaire": "Non publié avec certitude",
+   "tank": "Non publié avec certitude",
+   "mode_recharge": false,
+   "compatible_pelicandrome": false,
+   "largeur_min_m": null,
+   "scoop": "PAS d'écopage — dépendance aux pélicandromes.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "Non publié",
+   "prix_occasion": "Cellules ATR 72 d'occasion",
+   "prix_kit": "≈30 M€, ordre de grandeur cité au Parlement pour la catégorie",
+   "prix_total": "Non publié",
+   "quantite_produite_total": "Aucun exemplaire converti",
+   "quantite_en_vol_total": "Aucun",
+   "cadence_production_avion": "Non publiée",
+   "cadence_production_kit": "Non publiée",
+   "comment": "Concurrent direct de Kepplair sur le même créneau et la même cellule de départ. Les deux projets illustrent une bifurcation stratégique : convertir de l'existant vite et pas cher, plutôt que financer un programme neuf à 1 Md€ comme Hynaero.",
+   "verif": "Vérifié : existence du projet, base ATR 72, implantation toulousaine, lettre d'intention DGSCGC (Assemblée nationale, CNEWS). Non vérifié à ce jour : toutes les valeurs chiffrées, reprises par analogie avec le Forest Keeper faute de données publiées.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW127",
+   "moteur_reference_src": "analogie",
+   "moteur_reference_commentaire": "Cellule ATR 72."
+  },
+  {
+   "id": "FF72S",
+   "name": "Positive Aviation FF72-S",
+   "maker": "Positive Aviation (Toulouse)",
+   "makerUrl": "https://www.positive-aviation.com/",
+   "img": "https://aviationweek.com/sites/default/files/styles/crop_freeform/public/2026-04/fire-1_positive_aviation_promo.jpg?itok=ZHlrejuC",
+   "firstFlight": "Non effectué",
+   "available": "Non déterminée",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Aucun exemplaire opérationnel",
+   "ordersFR": "Aucune — lettre d'intention de la DGSCGC",
+   "ordersIntl": "Aucune connue",
+   "pilots": "2",
+   "groundCrew": "Non publié",
+   "masse_charge_t": 23,
+   "masse_charge_t_src": "analogie",
+   "masse_charge_t_commentaire": "MTOW de la cellule ATR 72 (23 t) : analogie, la version pompier n'étant ni certifiée ni pesée publiquement.",
+   "puissance_ch": 5500,
+   "puissance_ch_src": "estime",
+   "puissance_ch_commentaire": "2 × PW127 en base ATR 72 (~2×2 750 ch). Une remotorisation est évoquée : valeur à confirmer.",
+   "emptyMass": "Non publié",
+   "loadedMass": "≈23 t à l'arrachement de l'eau",
+   "enginePower": "2 × 2 750 ch (Pratt & Whitney Canada PW127) — cellule ATR 72",
+   "enginePowerSrc": "analogie",
+   "vitesse_kmh": 450,
+   "vitesse_kmh_commentaire": "≈450 km/h",
+   "autonomie_km": 2300,
+   "autonomie_km_commentaire": "≈2 300 km",
+   "reload": 10,
+   "runway": "≈1 300 m",
+   "speed": 450,
+   "range": 2300,
+   "autonomy": "≈2 300 km",
+   "speedTxt": "≈450 km/h",
+   "rotationRange": "≈1 150 km",
+   "approche_vitesse_kmh": 181.5,
+   "approche_vitesse_kmh_src": "constructeur",
+   "approche_vitesse_kmh_commentaire": "Héritée du fichier de profils de vol, qui la donnait pour une valeur constructeur mais sans référence. Aucun lien vérifiable à ce jour : le statut de source est à confirmer.",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "ecopage_vitesse_kmh": 181.5,
+   "ecopage_vitesse_kmh_src": "concept",
+   "ecopage_vitesse_kmh_commentaire": "Aucune donnee publiee : la variante amphibie du FF72 n'existe qu'a l'etat d'annonce. Decomposition reprise de la convention CL-415, vitesse d'ecopage heritee des profils v19.",
+   "ecopage_duree_efficace_s": 12.0,
+   "ecopage_duree_efficace_s_src": "concept",
+   "ecopage_duree_efficace_s_commentaire": "Aucune donnee publiee : la variante amphibie du FF72 n'existe qu'a l'etat d'annonce. Decomposition reprise de la convention CL-415, vitesse d'ecopage heritee des profils v19. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "decollage_vitesse_kmh": 258.0,
+   "decollage_vitesse_kmh_src": "concept",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "decollage_angle_nominal_deg": 3.5,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "decollage_angle_max_deg": 7,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "citerne_l": 0,
+   "citerne_l_commentaire": "Non publié avec certitude",
+   "tank": "Non publié avec certitude",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": null,
+   "scoop": "Ecopage sur plan d'eau et rechargement au pelicandrome, sur la variante amphibie annoncee.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "Non publié",
+   "prix_occasion": "Cellules ATR 72 d'occasion",
+   "prix_kit": "≈30 M€, ordre de grandeur cité au Parlement pour la catégorie",
+   "prix_total": "Non publié",
+   "quantite_produite_total": "Aucun exemplaire converti",
+   "quantite_en_vol_total": "Aucun",
+   "cadence_production_avion": "Non publiée",
+   "cadence_production_kit": "Non publiée",
+   "comment": "Variante amphibie annoncee du FF72. C'est elle, et non la version terrestre, que decrit le profil de vol d'ecopage. Aucune dimension de plan d'eau n'est publiee : la fiche n'apparait donc pas sur la carte des plans d'eau, faute de longueur_min_m. Meme cellule de depart ATR 72 que la fiche FF72.",
+   "verif": "Non verifie : l'existence meme de la variante amphibie repose sur les seules annonces de Positive Aviation. Les valeurs de plan de vol proviennent des profils v19 et sont des estimations.",
+   "ecopage_duree_avant_s": 1.5,
+   "ecopage_duree_avant_s_src": "concept",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 202 a 181 km/h. Aucune donnee publiee : la variante amphibie du FF72 n'existe qu'a l'etat d'annonce. Decomposition reprise de la convention CL-415, vitesse d'ecopage heritee des profils v19.",
+   "ecopage_vitesse_toucher_kmh": 202.0,
+   "ecopage_vitesse_toucher_kmh_src": "concept",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 233.0,
+   "ecopage_vitesse_rotation_kmh_src": "concept",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_duree_apres_s": 3.0,
+   "ecopage_duree_apres_s_src": "concept",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 181.5 a 233.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 79.896,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 605.0,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 172.708,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 16.5,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 858,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 2185,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1741 m, angles maximaux) et le cycle le plus long (2630 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PW127",
+   "moteur_reference_src": "analogie",
+   "moteur_reference_commentaire": "Cellule ATR 72."
+  },
+  {
+   "id": "A400M",
+   "name": "Airbus A400M (kit largage amovible)",
+   "maker": "Airbus Defence and Space",
+   "makerUrl": "https://www.airbus.com/",
+   "img": "https://i.ytimg.com/vi/E5MXkIXENu4/maxresdefault.jpg",
+   "firstFlight": "11 décembre 2009 (A400M) · essais du kit largage en 2022",
+   "available": "Non certifié à ce jour",
+   "status": "etude",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0 dédié",
+   "qtyNote": "Aucun appareil dédié : la flotte A400M appartient à l'armée de l'Air et de l'Espace et est déjà employée",
+   "ordersFR": "Aucune commande dédiée sécurité civile",
+   "ordersIntl": "—",
+   "pilots": "2 à 3",
+   "groundCrew": "Plusieurs dizaines — chaîne de maintenance militaire complète",
+   "masse_vide_t": 76.5,
+   "masse_vide_t_src": "",
+   "masse_vide_t_commentaire": "Reprise du champ d'affichage emptyMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "masse_charge_t": 141,
+   "masse_charge_t_src": "",
+   "masse_charge_t_commentaire": "Reprise du champ d'affichage loadedMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "puissance_ch": 46400,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "4 × 11 600 ch (Europrop TP400-D6, le turbopropulseur le plus puissant de l'Ouest) — statut de source hérité de la v5, où il valait pour la ligne de texte entière, non revérifié champ par champ",
+   "emptyMass": "≈76,5 t",
+   "loadedMass": "≈141 t au décollage",
+   "enginePower": "4 × 11 600 ch (Europrop TP400-D6, le turbopropulseur le plus puissant de l'Ouest)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 800,
+   "vitesse_kmh_commentaire": "≈800 km/h",
+   "autonomie_km": 6400,
+   "autonomie_km_commentaire": "≈6 400 km",
+   "reload": 22,
+   "runway": "≈1 800 m (piste renforcée)",
+   "speed": 800,
+   "range": 6400,
+   "autonomy": "≈6 400 km",
+   "speedTxt": "≈800 km/h",
+   "rotationRange": "≈3 200 km",
+   "citerne_l": 20000,
+   "citerne_l_commentaire": "Jusqu'à 20 000 L",
+   "tank": "Jusqu'à 20 000 L",
+   "mode_recharge": false,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": null,
+   "scoop": "PAS d'écopage. Doit se poser et être rechargé au sol — et aucun pélicandrome français n'est aujourd'hui dimensionné pour lui.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "≈150 M€ la cellule A400M neuve",
+   "prix_occasion": "Sans objet — aucun marché d'occasion — destiné plutot comme \"chargement spécial\" d'un A400M déjà possédé",
+   "prix_kit": "Non publié — kit de largage amovible (RORO) ≈1 a 3 million d'euro ?",
+   "prix_total": "Sans objet : aucun appareil dédié, un contrat de service avec les armées est envisagé",
+   "quantite_produite_total": "Environ 130 A400M livrés, toutes nations confondues",
+   "quantite_en_vol_total": "Aucun dédié à la sécurité civile ; la flotte française appartient à l'armée de l'Air et de l'Espace",
+   "cadence_production_avion": "Chaîne A400M active, mais aucune capacité disponible pour la sécurité civile",
+   "cadence_production_kit": "Kit non certifié, aucune production de série",
+   "comment": "Le faux ami du débat public. Deux fois la capacité d'un Dash 8 et une vitesse inégalée, mais : les appareils sont peu nombreux et déjà employés par les armées, le système est a grande capacité, mais il n'écope pas : son rechargement suppose une infrastructure qui n'existe pas pour tenir les 10 minutes. La DGSCGC ne l'envisage que comme un renfort ponctuel sous contrat de service, jamais comme un pilier.",
+   "verif": "Vérifié : essais Airbus de 2022, capacité annoncée de 20 000 L, position de la DGSCGC — suivi du projet et contrat de service envisagé après certification (réponse ministérielle à l'Assemblée nationale, question n° 8510). Non vérifié à ce jour : prix, masses, longueur de piste — valeurs constructeur usuelles.",
+   "moteur_nombre": 4,
+   "moteur_reference": "Europrop TP400-D6",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": "Le turbopropulseur le plus puissant de l'Ouest."
+  },
+  {
+   "id": "S414",
+   "name": "Salamandre S414 (concept drone écopeur)",
+   "maker": "Aucune — concept non porté par une entreprise identifiée",
+   "makerUrl": "",
+   "img": "https://media.licdn.com/dms/image/v2/D4E22AQFQXr1Uz-feHQ/feedshare-image-high-res/B4EZ9cmV38HkAU-/0/1783964983042?e=1786579200&v=beta&t=6TxEu2Acm3zuiDqaj5sEQCYjPX9GpHYOc-KFzAB-t08",
+   "firstFlight": "Aucun — objectif théorique de 36 mois après lancement",
+   "available": "Aucune — au plus tôt 7 ans après décision de lancement",
+   "status": "concept",
+   "fin_service": null,
+   "fin_service_commentaire": "Aucune date de retrait : appareil en service, commande ou a l'etude.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Concept — aucun exemplaire, aucun programme lancé, aucune société porteuse",
+   "ordersFR": "Aucune",
+   "ordersIntl": "Aucune",
+   "pilots": "0 — aucun poste de pilotage, jamais",
+   "groundCrew": "Non spécifié",
+   "masse_charge_t": 14,
+   "masse_charge_t_src": "",
+   "masse_charge_t_commentaire": "Reprise du champ d'affichage loadedMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "puissance_ch": 4400,
+   "puissance_ch_src": "concept",
+   "puissance_ch_commentaire": "4 × ≈1 100 ch (Pratt & Whitney PT6E-67XP) — d'après les notes de conception, non attesté — statut hérité : concept",
+   "emptyMass": "Non spécifiée",
+   "loadedMass": "≈14 t à l'arrachement de l'eau",
+   "enginePower": "4 × ≈1 100 ch (Pratt & Whitney PT6E-67XP) — d'après les notes de conception, non attesté",
+   "enginePowerSrc": "concept",
+   "vitesse_kmh": 380,
+   "vitesse_kmh_commentaire": "≈380 km/h — valeur du modèle, non spécifiée dans le concept",
+   "autonomie_km": 1200,
+   "autonomie_km_commentaire": "Non spécifiée dans le concept",
+   "reload": 4,
+   "runway": "Non spécifié",
+   "speed": 380,
+   "range": 1200,
+   "autonomy": "Non spécifiée dans le concept",
+   "speedTxt": "≈380 km/h — valeur du modèle, non spécifiée dans le concept",
+   "rotationRange": "≈600 km — valeur du modèle",
+   "citerne_l": 4300,
+   "citerne_l_src": "concept",
+   "citerne_l_commentaire": "4 300 L d'eau. Les 400 L de concentre injectes pendant l'ecopage ne sont pas comptes ici : citerne_l mesure l'eau larguee, pour rester comparable au reste de la flotte. Valeur de conception, aucune source publique. Corrige le 2026-08-18 : le champ portait 43004, concatenation de 4300 et 400.",
+   "tank": "4 300 L d'eau + 400 L de concentré injecté pendant l'écopage",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 60,
+   "largeur_min_m_commentaire": "Notes de conception du concept : 600 a 700 m selon les passages, « sous 800 m » ailleurs. AUCUNE SOURCE PUBLIQUE : le S414 n'est atteste nulle part.",
+   "scoop": "Écopage, de jour COMME DE NUIT — c'est la thèse centrale. Écopage sur 600 à 700 m de plan d'eau contre 1 340 m pour un Canadair, ce qui rendrait exploitables des milliers de retenues, gravières et lacs de barrage.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "19,5 M€ visés, pour un coût de revient annoncé de 12,1 M€",
+   "prix_occasion": "Sans objet",
+   "prix_kit": "",
+   "prix_total": "1,1 Md€ de développement + 280 M€ d'outillage ; rentabilité annoncée à 188 appareils",
+   "quantite_produite_total": "Aucun exemplaire — concept",
+   "quantite_en_vol_total": "Aucun",
+   "cadence_production_avion": "100 appareils par an visés (takt de 2,3 jours), par analogie avec les 80 avions par an d'ATR",
+   "cadence_production_kit": "",
+   "comment": "THÈSE DU CONCEPT — le pilote n'est pas un coût, c'est le plafond de la flotte. Un besoin mondial de 1 000 appareils exigerait ~5 000 pilotes qualifiés (2 pilotes × 2,5 équipages) alors qu'il en existe 1 000 à 1 500 : quadrupler le vivier d'un métier saisonnier, dangereux et à formation longue n'arrivera pas. D'où l'inversion : retirer le pilote pour débloquer la cadence (100/an au lieu de 7) et faire tomber le prix de 45 à 19,5 M€. ARGUMENT NOCTURNE — chaque soir le dispositif se pose et le feu court 10 à 12 h ; or la nuit l'hygrométrie remonte et le vent tombe, divisant la propagation par dix : un litre largué à 3 h vaudrait dix litres largués à 15 h. Le verrou n'est pas physique mais rétinien — l'œil ne sait pas estimer sa hauteur de nuit sur une eau lisse, là où un radioaltimètre la mesure au centimètre et une caméra infrarouge voit le front à travers la fumée. CHOIX TECHNIQUES — 4 × PT6E-67XP (4 400 ch) : sur quadrimoteur une panne à l'écopage coûte 25 % de puissance au lieu de 50 %, donc reste rattrapable à deux mètres de l'eau ; en transit on coupe deux moteurs et on pousse les autres à 85 %, soit −19 % de carburant. Largage à 149 km/h contre 200, marge au décrochage de 1,18 Vs, inatteignable avec un humain aux commandes. 10 h de vol par 24 h, 333 t/jour/appareil. ATTRITION ASSUMÉE — 2 à 3 % budgétés, l'argument étant que 14 CL-415 ont été détruits, presque toujours avec leur équipage.",
+   "verif": "CONCEPT NON EXISTANT — aucune source publique indépendante n'atteste d'un appareil ou d'un programme « Salamandre S414 ». Toutes les valeurs ci-dessus proviennent des notes de conception que vous m'avez transmises, et ne sont ni vérifiées ni vérifiables. TROIS INCOHÉRENCES INTERNES À ARBITRER AVANT PUBLICATION : (1) la citerne est donnée à 4 300 + 400 L à un endroit et à 4 500 L à un autre ; (2) la longueur d'écopage varie entre 600 m, 700 m et « sous 800 m » selon les passages ; (3) le rendement oscille entre 208 t/nuit, 344 t/appareil sur 21h-7h et 333 t/jour. DEUX CHIFFRES EXTERNES À CORRIGER : (a) « 14 CL-415 détruits sur 155 produits » — Wikipédia recense 95 CL-415 construits, pas 155, ce qui durcit encore votre taux d'attrition au lieu de l'affaiblir ; (b) « un Canadair coûte 45 M€ » n'est étayé par aucune source : le Sénat retient 20 M€ à l'acquisition il y a 25 ans, et la commande DHC-515 de juin 2026 ressort à près de 100 M€ l'unité. Enfin, l'estimation « Hynaero vise 150 appareils entre 2032 et 2050 » n'a pas pu être vérifiée dans les sources publiques du programme.",
+   "ecopage_vitesse_kmh": 105.0,
+   "ecopage_vitesse_kmh_src": "concept",
+   "ecopage_vitesse_kmh_commentaire": "Concept non atteste. Vitesse d'ecopage deduite de la masse au decollage (14 t contre 21,32 t au CL-415) par la loi en racine de la masse : 130 x racine(14/21,32) = 105 km/h. Remplissage de 4 300 L a 511 L/s = 8,4 s. Tout est calcule, rien n'est source.",
+   "ecopage_duree_efficace_s": 8.5,
+   "ecopage_duree_efficace_s_src": "concept",
+   "ecopage_duree_efficace_s_commentaire": "Concept non atteste. Vitesse d'ecopage deduite de la masse au decollage (14 t contre 21,32 t au CL-415) par la loi en racine de la masse : 130 x racine(14/21,32) = 105 km/h. Remplissage de 4 300 L a 511 L/s = 8,4 s. Tout est calcule, rien n'est source. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "ecopage_duree_avant_s": 1.0,
+   "ecopage_duree_avant_s_src": "concept",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 117 a 105 km/h. Concept non atteste. Vitesse d'ecopage deduite de la masse au decollage (14 t contre 21,32 t au CL-415) par la loi en racine de la masse : 130 x racine(14/21,32) = 105 km/h. Remplissage de 4 300 L a 511 L/s = 8,4 s. Tout est calcule, rien n'est source.",
+   "ecopage_vitesse_toucher_kmh": 117.0,
+   "ecopage_vitesse_toucher_kmh_src": "concept",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 135.0,
+   "ecopage_vitesse_rotation_kmh_src": "concept",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "decollage_vitesse_kmh": 150.0,
+   "decollage_vitesse_kmh_src": "concept",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "ecopage_duree_apres_s": 2.0,
+   "ecopage_duree_apres_s_src": "concept",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 105.0 a 135.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "concept",
+   "approche_angle_nominal_deg_commentaire": "Plan de descente nominal, standard IFR. Valeur par defaut du projet, aucune source.",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "concept",
+   "approche_angle_max_deg_commentaire": "Approche sous forte contrainte. Valeur par defaut du projet, aucune source.",
+   "decollage_angle_nominal_deg": 5,
+   "decollage_angle_nominal_deg_src": "concept",
+   "decollage_angle_nominal_deg_commentaire": "Montee nominale. Valeur par defaut du projet, aucune source.",
+   "decollage_angle_max_deg": 8,
+   "decollage_angle_max_deg_src": "concept",
+   "decollage_angle_max_deg_commentaire": "Pente maximale d'evitement d'obstacle. Valeur par defaut du projet, aucune source.",
+   "ecopage_distance_avant_m": 30.833,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 247.917,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 66.667,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 11.5,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 345,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1524,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1176 m, angles maximaux) et le cycle le plus long (1871 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 4,
+   "moteur_reference": "Pratt & Whitney PT6E-67XP",
+   "moteur_reference_src": "concept",
+   "moteur_reference_commentaire": "D'après les notes de conception, non attesté."
+  },
+  {
+   "id": "TRACKER",
+   "name": "Conair Tracker S-2FT (Turbo Firecat)",
+   "maker": "Conair Aerial Firefighting (conversion) / Grumman (cellule d'origine)",
+   "makerUrl": "https://www.conair.ca/",
+   "img": "https://www.netpompiers.fr/wp-content/uploads/phototheques/aeriens/090822ee30.jpg",
+   "firstFlight": "Decembre 1952 (cellule S-2 Tracker) — en service français depuis 1982",
+   "available": "1982 a 2020 (38 ans de service français)",
+   "status": "retire",
+   "fin_service": 2020,
+   "fin_service_commentaire": "Retrait anticipe le 14 fevrier 2020 après 38 ans de service français (mise en service 1982), decide en raison de la corrosion des trains d'atterrissage et de l'attrition des pieces de rechange (Senat).",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "7 appareils encore en ligne fin 2019, retires le 14 fevrier 2020",
+   "ordersFR": "Aucune",
+   "ordersIntl": "Aucune",
+   "pilots": "1 (copilote possible)",
+   "groundCrew": "Non publié",
+   "masse_vide_t": 8.5,
+   "masse_vide_t_src": "",
+   "masse_vide_t_commentaire": "Reprise du champ d'affichage emptyMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "masse_charge_t": 11.4,
+   "masse_charge_t_src": "",
+   "masse_charge_t_commentaire": "Reprise du champ d'affichage loadedMass au passage en v6. Ce texte ne portait aucune source : la provenance d'origine est inconnue.",
+   "puissance_ch": 2800,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "2 × ≈1 400 ch (Pratt & Whitney Canada PT6A-67AF, conversion Turbo Firecat) — statut de source hérité de la v5, où il valait pour la ligne de texte entière, non revérifié champ par champ",
+   "emptyMass": "≈8,5 t",
+   "loadedMass": "≈11,4 t au décollage",
+   "enginePower": "2 × ≈1 400 ch (Pratt & Whitney Canada PT6A-67AF, conversion Turbo Firecat)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 390,
+   "vitesse_kmh_commentaire": "~390 km/h",
+   "autonomie_km": 1900,
+   "autonomie_km_commentaire": "~1 900 km",
+   "reload": 2,
+   "runway": "≈800 m — conçu pour l'appontage, d'où sa compatibilité avec les pistes courtes",
+   "speed": 390,
+   "range": 1900,
+   "autonomy": "~1 900 km",
+   "speedTxt": "~390 km/h",
+   "rotationRange": "~950 km",
+   "citerne_l": 3000,
+   "citerne_l_commentaire": "3 000 L",
+   "tank": "3 000 L",
+   "mode_recharge": false,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": null,
+   "scoop": "PAS d'écopage — ravitaillement au pelicandrome exclusivement.",
+   "modification_avion_existant": true,
+   "base_cellule_occasion": true,
+   "prix_cellule_neuve": "Sans objet — les cellules provenaient des surplus militaires américains, cédées à faible coût",
+   "prix_occasion": "Cellules S-2 déclassées de l'US Navy, rachetées puis converties",
+   "prix_kit": "Non publié — conversion Firecat puis turbinisation par Conair",
+   "prix_total": "Non publié",
+   "quantite_produite_total": "Environ 1 280 Grumman S-2 Tracker construits à partir de 1952 ; quelques dizaines converties en bombardiers d'eau",
+   "quantite_en_vol_total": "Aucun en service opérationnel en France. Plusieurs cellules préservées, dont une exposée à Nîmes et une remise en vol en 2024 par une association",
+   "cadence_production_avion": "Aucune : conversions unitaires, programme clos",
+   "cadence_production_kit": "Conversions Conair achevées, plus aucun kit produit",
+   "comment": "Ancien avion de lutte anti-sous-marine de l'US Navy, reconverti en bombardier d'eau par le canadien Conair. Pendant quatre décennies, il a tenu la mission de patrouille préventive : décoller avec la soute déjà pleine de retardant, surveiller les secteurs à risque et larguer immédiatement sur un feu naissant — ce que la doctrine appelle le guet aérien armé, l'adjectif désignant la charge de produit emportée et non un armement. Son retrait en 2020 a un effet direct sur le réseau au sol : conçu pour apponter sur porte-avions, il se contentait de pistes courtes que les Dash 8 ne peuvent pas utiliser. La désaffectation d'Alès et du Luc en découle directement.",
+   "verif": "Verifie : retrait le 14/02/2020, 7 appareils restants, motifs (corrosion des trains, attrition des pieces), mise en service française en 1982, capacite de 3 000 L, absence d'écopage, effet sur les pistes courtes (Senat r22-838, DGSCGC fiche 2020, SDIS 11, F. Marsaly). NON VERIFIE : vitesse, autonomie, masses. Nuance de source à connaître : le Sénat évoque « les 8 Trackers qui restaient en activité fin 2019 » puis « le retrait de ses sept avions » — les deux chiffres coexistent dans le même rapport. F. Marsaly comptait 9 Turbo Firecat en 2020.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney Canada PT6A-67AF",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": "Conversion Turbo Firecat."
+  },
+  {
+   "id": "CL215",
+   "name": "Canadair CL-215",
+   "maker": "Canadair",
+   "makerUrl": "https://dehavilland.com/",
+   "img": "https://imgproc.airliners.net/photos/airliners/6/5/5/2732556.jpg?v=v40",
+   "firstFlight": "1967 — premiere livraison en 1969",
+   "available": "1970 a 1995 en France (25 ans de service)",
+   "status": "retire",
+   "fin_service": 1995,
+   "fin_service_commentaire": "En service en France de 1970 a 1995, remplace par le CL-415. La version remotorisee CL-215T n'a jamais ete utilisee par la France.",
+   "qty_n": 0,
+   "qty": "0",
+   "qtyNote": "Retire du service français en 1995",
+   "ordersFR": "Aucune",
+   "ordersIntl": "Aucune — production close",
+   "pilots": "2",
+   "groundCrew": "Non publié",
+   "masse_charge_t": 19.7,
+   "masse_charge_t_src": "publie",
+   "masse_charge_t_commentaire": "19,7 t : valeur publiée (littérature spécialisée), pas de fiche constructeur en ligne, appareil retiré du catalogue.",
+   "puissance_ch": 4200,
+   "puissance_ch_src": "constructeur",
+   "puissance_ch_commentaire": "2 × 2 100 ch, R-2800 — donnée constructeur historique.",
+   "emptyMass": "Non publié",
+   "loadedMass": "≈19,7 t à l'arrachement de l'eau",
+   "enginePower": "2 × 2 100 ch (Pratt & Whitney R-2800, moteurs à pistons)",
+   "enginePowerSrc": "constructeur",
+   "vitesse_kmh": 290,
+   "vitesse_kmh_commentaire": "~290 km/h (moteurs a pistons)",
+   "autonomie_km": 2100,
+   "autonomie_km_commentaire": "~2 100 km",
+   "reload": 5,
+   "runway": "≈1 800 m",
+   "speed": 290,
+   "range": 2100,
+   "autonomy": "~2 100 km",
+   "speedTxt": "~290 km/h (moteurs a pistons)",
+   "rotationRange": "~1 050 km",
+   "approche_vitesse_kmh": 157.4,
+   "approche_vitesse_kmh_src": "estime",
+   "approche_vitesse_kmh_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_nominal_deg": 3,
+   "approche_angle_nominal_deg_src": "estime",
+   "approche_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "approche_angle_max_deg": 6,
+   "approche_angle_max_deg_src": "estime",
+   "approche_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "ecopage_vitesse_kmh": 130.0,
+   "ecopage_vitesse_kmh_src": "analogie",
+   "ecopage_vitesse_kmh_commentaire": "Meme coque et memes ecopes que le CL-415, dont il est le predecesseur : 12 s a 130 km/h (5 455 L en 12 s, airliners.net). Decomposition reprise du CL-415.",
+   "ecopage_duree_efficace_s": 12.0,
+   "ecopage_duree_efficace_s_src": "analogie",
+   "ecopage_duree_efficace_s_commentaire": "Meme coque et memes ecopes que le CL-415, dont il est le predecesseur : 12 s a 130 km/h (5 455 L en 12 s, airliners.net). Decomposition reprise du CL-415. Duree de REMPLISSAGE CONTINU seule, hors entree et sortie d'eau.",
+   "decollage_vitesse_kmh": 185.0,
+   "decollage_vitesse_kmh_src": "analogie",
+   "decollage_vitesse_kmh_commentaire": "Montee initiale apres l'arrachement, environ 1,11 x la vitesse de rotation (rapport 185 / 167 releve sur le CL-415).",
+   "decollage_angle_nominal_deg": 3.5,
+   "decollage_angle_nominal_deg_src": "estime",
+   "decollage_angle_nominal_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "decollage_angle_max_deg": 7,
+   "decollage_angle_max_deg_src": "estime",
+   "decollage_angle_max_deg_commentaire": "Héritée du fichier de profils de vol, où elle figurait déjà sans source. Ordre de grandeur, non vérifié sur documentation constructeur.",
+   "citerne_l": 5300,
+   "citerne_l_commentaire": "5 300 L",
+   "tank": "5 300 L",
+   "mode_recharge": true,
+   "compatible_pelicandrome": true,
+   "largeur_min_m": 90,
+   "largeur_min_m_commentaire": "Meme formule amphibie que le CL-415, capacite moindre. Valeurs reprises du CL-415 par analogie : NON VERIFIEES.",
+   "scoop": "Ecopage ET pelicandrome — premier bombardier d'eau de serie au monde conçu pour écoper.",
+   "modification_avion_existant": false,
+   "base_cellule_occasion": false,
+   "prix_cellule_neuve": "Non publié",
+   "prix_occasion": "Sans objet — appareil retiré du service français",
+   "prix_kit": "",
+   "prix_total": "Non publié",
+   "quantite_produite_total": "125 exemplaires construits entre 1967 et 1990",
+   "quantite_en_vol_total": "Quelques cellules encore en service hors de France, souvent portées au standard CL-415EAF",
+   "cadence_production_avion": "Production close en 1990",
+   "cadence_production_kit": "",
+   "comment": "L'ancêtre, et le premier bombardier d'eau de série au monde. La France en fut l'un des tout premiers utilisateurs et l'a exploité un quart de siècle : quinze cellules au total, dont trois livrées en remplacement d'appareils détruits, retirées entre 1995 et 1996 après environ 8 500 heures de vol chacune. La version intermédiaire remotorisée, le CL-215T, n'a jamais été utilisée en France : le pays est passé directement au CL-415.",
+   "verif": "Verifie : service français de 1970 a 1995, premier vol 1967, production close en 1989 après 125 exemplaires, non-utilisation du CL-215T par la France (Wikipedia Canadair, sources croisees). NON VERIFIE : vitesse, autonomie, capacite exacte, masses. Vérifié en complément : 125 exemplaires construits entre 1967 et 1990 ; 15 cellules françaises dont 3 de remplacement, retrait 1995-1996, environ 8 500 heures de vol par appareil (La Presse, SDIS 10).",
+   "ecopage_duree_avant_s": 1.5,
+   "ecopage_duree_avant_s_src": "analogie",
+   "ecopage_duree_avant_s_commentaire": "Phase 1 sur 3 : du toucher de l'eau au plein debit des ecopes, la vitesse tombant de 145 a 130 km/h. Meme coque et memes ecopes que le CL-415, dont il est le predecesseur : 12 s a 130 km/h (5 455 L en 12 s, airliners.net). Decomposition reprise du CL-415.",
+   "ecopage_vitesse_toucher_kmh": 145.0,
+   "ecopage_vitesse_toucher_kmh_src": "analogie",
+   "ecopage_vitesse_toucher_kmh_commentaire": "Vitesse au contact de l'eau, entree de la phase 1. Obtenue par la convention du projet : 1,115 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_vitesse_rotation_kmh": 167.0,
+   "ecopage_vitesse_rotation_kmh_src": "analogie",
+   "ecopage_vitesse_rotation_kmh_commentaire": "Vitesse d'arrachement de l'eau, sortie de la phase 3, appareil plein. Obtenue par la convention du projet : 1,285 x la vitesse d'ecopage, rapport releve sur le CL-415.",
+   "ecopage_duree_apres_s": 2.5,
+   "ecopage_duree_apres_s_src": "analogie",
+   "ecopage_duree_apres_s_commentaire": "Phase 3 sur 3 : de la fin du remplissage a l'arrachement, appareil plein, la vitesse montant de 130.0 a 167.0 km/h. Duree estimee d'apres la masse : 2 s sous 10 t, 2,5 s pour un Canadair, 3 s au-dela de 25 t.",
+   "ecopage_distance_avant_m": 57.292,
+   "ecopage_distance_avant_m_src": "calcul",
+   "ecopage_distance_avant_m_commentaire": "Derive : (vitesse au toucher + vitesse d'ecopage)/2 x duree d'entree.",
+   "ecopage_distance_efficace_m": 433.333,
+   "ecopage_distance_efficace_m_src": "calcul",
+   "ecopage_distance_efficace_m_commentaire": "Derive : vitesse d'ecopage x duree efficace. C'est cette distance que publient les constructeurs, environ 410 a 450 m pour un CL-415.",
+   "ecopage_distance_apres_m": 103.125,
+   "ecopage_distance_apres_m_src": "calcul",
+   "ecopage_distance_apres_m_commentaire": "Derive : (vitesse d'ecopage + vitesse de rotation)/2 x duree de sortie.",
+   "ecopage_duree_s": 16.0,
+   "ecopage_duree_s_src": "calcul",
+   "ecopage_duree_s_commentaire": "Derive : somme des trois durees de phase.",
+   "ecopage_distance_m": 594,
+   "ecopage_distance_m_src": "calcul",
+   "ecopage_distance_m_commentaire": "Derive : course sur l'eau TOTALE, somme des trois phases. A ne pas confondre avec la distance efficace, seule publiee par les constructeurs.",
+   "longueur_min_m": 1921,
+   "longueur_min_m_src": "calcul",
+   "longueur_min_m_commentaire": "Derive, grandeur FORMELLE du projet : moyenne entre le cycle le plus court (1477 m, angles maximaux) et le cycle le plus long (2366 m, angles nominaux), mesures d'un seuil de 50 m a l'autre. Les sources publiees sont trop dispersees pour etre reprises : 1 340, 1 500 et 2 000 m circulent pour le seul CL-415.",
+   "moteur_nombre": 2,
+   "moteur_reference": "Pratt & Whitney R-2800",
+   "moteur_reference_src": "constructeur",
+   "moteur_reference_commentaire": "Moteurs à pistons."
+  }
+ ]
+}
+</script>
+<!-- ===== BLOC DE DONNÉES EMBARQUÉES — FIN ===== -->
+
+<!-- ===== BLOC DE CALCUL PARTAGE — ECOPAGE : DEBUT ===== -->
+<script>
+/* ==================================================================
+   BLOC DE CALCUL PARTAGE — ECOPAGE ET MOTORISATION (v2, 2026-08-18)
+   ------------------------------------------------------------------
+   IDENTIQUE DANS TOUS LES OUTILS. Toute correction se reporte partout
+   par le script d'injection. Ne jamais modifier une copie isolement.
+   Specification : PROJET-reference.md § 3.5 bis.
+
+   Le contact avec l'eau se decompose en trois phases. Chacune porte une
+   DUREE et une DISTANCE, liees par la vitesse. Il suffit d'en renseigner
+   UNE par phase : l'autre se deduit. Les totaux se deduisent toujours.
+
+        toucher                                          arrachement
+           |<-- 1. entree -->|<-- 2. efficace -->|<-- 3. sortie -->|
+      vTouche ----------> vEco =============== vEco ----------> vRotation
+
+     dAvant = (vTouche + vEco)/2 x tAvant      profil trapezoidal
+     dEff   =            vEco    x tEff        vitesse constante
+     dApres = (vEco + vRotation)/2 x tApres    profil trapezoidal
+     dTotal = dAvant + dEff + dApres
+     tTotal = tAvant + tEff + tApres
+
+   POURQUOI DEDUIRE PLUTOT QUE STOCKER : les documentations constructeur
+   donnent presque toujours la DISTANCE EFFICACE (430 m sur un CL-415) et
+   la DUREE EFFICACE (12 s). Le contact total ne s'y trouve jamais. On
+   saisit donc ce qui est publie, et la machine calcule le reste, jamais
+   l'inverse.
+
+   LONGUEUR DE PLAN D'EAU DE REFERENCE : les sources sont trop dispersees
+   (1 340 m, 1 500 m, 2 000 m pour le seul CL-415) pour etre reprises
+   telles quelles. Le projet en fait une grandeur FORMELLE, calculee :
+   moyenne entre le cycle le plus court et le cycle le plus long, mesures
+   d'un seuil de 50 m a l'autre. Voir planEau().
+   ================================================================== */
+var ECO = (function () {
+  var SEUIL_PLAN_EAU = 50;              /* m, seuil pratique, convention du projet */
+  var ANGLES_DEFAUT = { appNom: 3, appMax: 6, decNom: 5, decMax: 8 };
+
+  function n(x) {
+    if (x === null || x === undefined || x === "") return null;
+    var v = Number(x);
+    return isNaN(v) ? null : v;
+  }
+  var ms = function (kmh) { return kmh / 3.6; };
+  var rad = function (deg) { return deg * Math.PI / 180; };
+
+  /* Une phase : distance = vitesse moyenne x duree. Deux inconnues sur
+     trois se refusent : on ne devine pas une vitesse ET une duree. */
+  function phase(vMoy, t, d) {
+    if (vMoy === null || vMoy <= 0) return { t: t, d: d, deduit: null };
+    if (t !== null && d === null) return { t: t, d: vMoy * t, deduit: "d" };
+    if (d !== null && t === null) return { t: d / vMoy, d: d, deduit: "t" };
+    return { t: t, d: d, deduit: null };
+  }
+
+  /* Complete une fiche de flotte. Ne touche a AUCUNE valeur deja posee :
+     ne remplit que les trous. Renvoie la liste des champs deduits. */
+  function completer(f) {
+    var deduits = [];
+    var poser = function (k, v) {
+      if (v === null || !isFinite(v)) return;
+      f[k] = Math.round(v * 1000) / 1000;
+      deduits.push(k);
+    };
+
+    var vEco = n(f.ecopage_vitesse_kmh);
+    var vTou = n(f.ecopage_vitesse_toucher_kmh);
+    var vRot = n(f.ecopage_vitesse_rotation_kmh);
+    var tAv = n(f.ecopage_duree_avant_s), dAv = n(f.ecopage_distance_avant_m);
+    var tEf = n(f.ecopage_duree_efficace_s), dEf = n(f.ecopage_distance_efficace_m);
+    var tAp = n(f.ecopage_duree_apres_s), dAp = n(f.ecopage_distance_apres_m);
+    var tTo = n(f.ecopage_duree_s);
+
+    /* 1. phase efficace : celle que publient les constructeurs, et la
+          seule ou la vitesse elle-meme peut se deduire. */
+    if (vEco === null && dEf !== null && tEf !== null && tEf > 0) {
+      vEco = (dEf / tEf) * 3.6;
+      poser("ecopage_vitesse_kmh", vEco);
+    }
+    var r = phase(vEco === null ? null : ms(vEco), tEf, dEf);
+    if (r.deduit === "d") poser("ecopage_distance_efficace_m", r.d);
+    if (r.deduit === "t") poser("ecopage_duree_efficace_s", r.t);
+    tEf = r.t; dEf = r.d;
+
+    if (vEco === null) return deduits;   /* sans vitesse d'ecopage, rien d'autre n'est calculable */
+
+    /* 2. entree et sortie. A defaut de vitesse propre, la phase est
+          confondue avec l'ecopage : vitesse constante, trapeze plat. */
+    var vmAv = (ms(vTou === null ? vEco : vTou) + ms(vEco)) / 2;
+    var vmAp = (ms(vEco) + ms(vRot === null ? vEco : vRot)) / 2;
+
+    /* la duree de sortie peut aussi venir d'un total herite */
+    if (tAp === null && dAp === null && tTo !== null && tEf !== null) {
+      var reste = tTo - tEf - (tAv === null ? 0 : tAv);
+      if (reste > 0.01) tAp = reste;
+    }
+
+    var a = phase(vmAv, tAv, dAv);
+    if (a.deduit === "d") poser("ecopage_distance_avant_m", a.d);
+    if (a.deduit === "t") poser("ecopage_duree_avant_s", a.t);
+    tAv = a.t; dAv = a.d;
+
+    var b = phase(vmAp, tAp, dAp);
+    if (b.deduit === "d") poser("ecopage_distance_apres_m", b.d);
+    if (b.deduit === "t") poser("ecopage_duree_apres_s", b.t);
+    tAp = b.t; dAp = b.d;
+
+    /* 3. totaux : toujours la somme des phases, jamais une saisie. */
+    var sT = (tAv || 0) + (tEf || 0) + (tAp || 0);
+    var sD = (dAv || 0) + (dEf || 0) + (dAp || 0);
+    if (tEf !== null && sT > 0) {
+      f.ecopage_duree_s = Math.round(sT * 1000) / 1000; deduits.push("ecopage_duree_s");
+    }
+    if (dEf !== null && sD > 0) {
+      f.ecopage_distance_m = Math.round(sD); deduits.push("ecopage_distance_m");
+    }
+
+    /* 4. longueur de plan d'eau de reference */
+    var pe = planEau(f);
+    if (pe !== null) { f.longueur_min_m = Math.round(pe); deduits.push("longueur_min_m"); }
+    return deduits;
+  }
+
+  /* MOTORISATION. moteur_nombre et moteur_reference sont saisis, puissance_ch
+     est la puissance TOTALE. Le texte d'affichage enginePower en decoule :
+     il etait saisi a la main et pouvait contredire les nombres. */
+  function moteur(f) {
+    var nb = n(f.moteur_nombre), tot = n(f.puissance_ch);
+    var ref = (f.moteur_reference || "").trim();
+    if (nb === null || nb <= 0 || tot === null) return null;
+    var unit = tot / nb;
+    var esp = function (x) {              /* 2380 -> "2 380" */
+      return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    };
+    return { nombre: nb, total: tot, unitaire: unit, reference: ref,
+             texte: nb + " × " + esp(unit) + " ch" + (ref ? " (" + ref + ")" : "") };
+  }
+  function completerMoteur(f) {
+    var m = moteur(f);
+    if (m === null) return [];
+    f.enginePower = m.texte;
+    f.moteur_puissance_unitaire_ch = Math.round(m.unitaire * 10) / 10;
+    return ["enginePower", "moteur_puissance_unitaire_ch"];
+  }
+
+  /* Cycle complet d'un seuil h a l'autre : descente + course sur l'eau +
+     montee. Le cycle le plus COURT prend les angles maximaux (pentes les
+     plus fortes), le plus LONG les angles nominaux. */
+  function cycle(f, h) {
+    var dTo = n(f.ecopage_distance_m);
+    if (dTo === null) return null;
+    var aNom = n(f.approche_angle_nominal_deg), aMax = n(f.approche_angle_max_deg);
+    var dNom = n(f.decollage_angle_nominal_deg), dMax = n(f.decollage_angle_max_deg);
+    if (aNom === null) aNom = ANGLES_DEFAUT.appNom;
+    if (aMax === null) aMax = ANGLES_DEFAUT.appMax;
+    if (dNom === null) dNom = ANGLES_DEFAUT.decNom;
+    if (dMax === null) dMax = ANGLES_DEFAUT.decMax;
+    var court = h / Math.tan(rad(aMax)) + dTo + h / Math.tan(rad(dMax));
+    var lng = h / Math.tan(rad(aNom)) + dTo + h / Math.tan(rad(dNom));
+    return { court: court, lng: lng, moyenne: (court + lng) / 2 };
+  }
+
+  /* Longueur de plan d'eau de reference du projet. */
+  function planEau(f) {
+    if (!f.mode_recharge) return null;
+    var c = cycle(f, SEUIL_PLAN_EAU);
+    return c === null ? null : c.moyenne;
+  }
+
+  /* Ecart entre la course totale enregistree et la somme des phases.
+     Doit valoir zero : garde-fou apres une saisie manuelle. */
+  function ecart(f) {
+    var dAv = n(f.ecopage_distance_avant_m) || 0,
+        dEf = n(f.ecopage_distance_efficace_m) || 0,
+        dAp = n(f.ecopage_distance_apres_m) || 0,
+        dTo = n(f.ecopage_distance_m);
+    if (dTo === null || dTo === 0) return null;
+    var s = dAv + dEf + dAp;
+    return { somme: s, declare: dTo, ecart: s - dTo, pct: 100 * (s - dTo) / dTo };
+  }
+
+  /* point d'entree unique : tout ce qui se derive d'une fiche */
+  function tout(f) { return completer(f).concat(completerMoteur(f)); }
+
+  return {
+    completer: tout, ecopage: completer, moteur: moteur,
+    cycle: cycle, planEau: planEau, ecart: ecart,
+    SEUIL_PLAN_EAU: SEUIL_PLAN_EAU, ANGLES_DEFAUT: ANGLES_DEFAUT
+  };
+})();
+/* ===== FIN DU BLOC DE CALCUL PARTAGE ===== */
+</script>
+<!-- ===== BLOC DE CALCUL PARTAGE — ECOPAGE : FIN ===== -->
+<script>
+try{
+const S=id=>document.getElementById(id);
+let DATA=JSON.parse(S("data-flotte").textContent);
+let FLEET=DATA.fleet;
+/* Bloc de calcul partage : les distances de phase, les totaux et la
+   longueur de plan d'eau sont DERIVES, jamais lus tels quels du JSON.
+   Un fichier ou il manque un champ derive s'affiche donc quand meme. */
+FLEET.forEach(f=>ECO.completer(f));
+
+/* ---------- schéma des champs ----------
+   type : txt | num | bool | statut | area
+   src  : true si le champ porte <k>_src + <k>_commentaire (grandeur sourçable)
+   Les champs *_commentaire historiques (citerne_commentaire...) restent des
+   lignes propres : ils tiennent lieu de commentaire pour leur grandeur.   */
+const SCH=[
+ ["Identité",[
+  ["id","Identifiant (clé de liaison entre outils)","txt"],
+  ["name","Nom","txt"],
+  ["maker","Fabricant","txt"],
+  ["makerUrl","Site (URL)","txt"],
+  ["img","Photo (URL)","txt"],
+  ["firstFlight","Premier vol","txt"],
+  ["available","Disponibilité","txt"],
+  ["status","Statut","statut"],
+  ["fin_service","Fin de service (année, vide = aucune)","num"],
+  ["fin_service_commentaire","Commentaire fin de service","area"],
+ ]],
+ ["Flotte française",[
+  ["qty","Quantité","txt"],
+  ["qtyNote","Précision quantité","area"],
+  ["ordersFR","Commandes France","txt"],
+  ["ordersIntl","Commandes étranger","txt"],
+  ["pilots","Pilotes","txt"],
+  ["groundCrew","Équipage sol","txt"],
+ ]],
+ ["Masses et puissance",[
+  ["masse_vide_t","Masse à vide (t)","num",1],
+  ["masse_charge_t","Masse au décollage (t)","num",1],
+  ["puissance_ch","Puissance totale, tous moteurs (ch)","num",1],
+  ["moteur_nombre","Nombre de moteurs","num"],
+  ["moteur_reference","Référence du moteur","txt"],
+  ["moteur_puissance_unitaire_ch","Puissance unitaire (ch)","calc"],
+  ["enginePower","Motorisation (texte affiché)","calc"],
+  ["emptyMass","Masse à vide (texte affiché)","txt"],
+  ["loadedMass","Masse en charge (texte affiché)","txt"],
+  ["enginePowerSrc","Statut puissance (champ historique v5)","txt"],
+ ]],
+ ["Performances",[
+  ["vitesse_kmh","Vitesse (km/h)","num",1],
+  ["vitesse_commentaire","Commentaire vitesse","txt"],
+  ["autonomie_km","Autonomie (km)","num",1],
+  ["autonomie_commentaire","Commentaire autonomie","txt"],
+  ["runway","Piste requise","txt"],
+  ["reload","Rechargement pélicandrome (min)","num",1],
+ ]],
+ ["Plan de vol — approche et décollage",[
+  ["approche_vitesse_kmh","Approche, vitesse (km/h)","num"],
+  ["approche_angle_nominal_deg","Approche, angle nominal (°)","num"],
+  ["approche_angle_max_deg","Approche, angle maximum (°)","num"],
+  ["decollage_vitesse_kmh","Décollage, vitesse (km/h)","num"],
+  ["decollage_angle_nominal_deg","Décollage, angle nominal (°)","num"],
+  ["decollage_angle_max_deg","Décollage, angle maximum (°)","num"],
+ ]],
+ /* Ecopage : par phase, on saisit LA DUREE OU LA DISTANCE, pas les deux.
+    Le champ laisse vide se remplit tout seul a la validation. Les totaux et
+    la longueur de plan d'eau sont toujours calcules, jamais saisis. */
+ ["Écopage — trois phases, ce qui se saisit",[
+  ["ecopage_vitesse_toucher_kmh","1 · Vitesse au toucher de l'eau (km/h)","num"],
+  ["ecopage_duree_avant_s","1 · Entrée, durée (s)","num"],
+  ["ecopage_distance_avant_m","1 · Entrée, distance (m)","num"],
+  ["ecopage_vitesse_kmh","2 · Vitesse d'écopage (km/h)","num"],
+  ["ecopage_duree_efficace_s","2 · Efficace, durée (s)","num"],
+  ["ecopage_distance_efficace_m","2 · Efficace, distance (m) — celle des constructeurs","num"],
+  ["ecopage_vitesse_rotation_kmh","3 · Vitesse de rotation, sortie d'eau (km/h)","num"],
+  ["ecopage_duree_apres_s","3 · Sortie, durée (s)","num"],
+  ["ecopage_distance_apres_m","3 · Sortie, distance (m)","num"],
+ ]],
+ ["Écopage — ce qui se calcule",[
+  ["ecopage_duree_s","Durée de contact totale (s)","calc"],
+  ["ecopage_distance_m","Course sur l'eau totale (m)","calc"],
+  ["longueur_min_m","Plan d'eau, longueur de référence (m)","calc"],
+ ]],
+ ["Écopage et emport",[
+  ["citerne_l","Citerne (L)","num",1],
+  ["citerne_commentaire","Commentaire citerne","txt"],
+  ["tank","Citerne (texte affiché)","txt"],
+  ["mode_recharge","Compatible écopage (sinon pélicandrome exclusivement)","bool"],
+  ["compatible_pelicandrome","Compatible pélicandrome","bool"],
+  ["largeur_min_m","Plan d'eau, largeur min (m)","num",1],
+  ["scoop","Écopage (texte affiché)","area"],
+ ]],
+ ["Prix et production",[
+  ["modification_avion_existant","Kit de conversion d'un avion existant","bool"],
+  ["base_cellule_occasion","Cellule de départ d'occasion","bool"],
+  ["prix_cellule_neuve","Prix cellule neuve","area"],
+  ["prix_occasion","Prix occasion","area"],
+  ["prix_kit","Prix du kit de conversion","area"],
+  ["prix_total","Prix total","area"],
+  ["quantite_produite_total","Quantité produite au total","area"],
+  ["quantite_en_vol_total","Quantité encore en vol","area"],
+  ["cadence_production_avion","Cadence de production, avion","area"],
+  ["cadence_production_kit","Cadence de production, kit","area"],
+ ]],
+ ["Divers (affichage)",[
+  ["speed","speed (km/h, champ hérité lu par distance pélicandrome)","num"],
+  ["range","range (km, champ hérité)","num"],
+  ["autonomy","Autonomie (texte)","txt"],
+  ["speedTxt","Vitesse (texte)","txt"],
+  ["rotationRange","Rayon de rotation (texte)","txt"],
+  ["comment","Commentaire général","area"],
+  ["verif","Fiabilité / sources (bilan de session)","area"],
+ ]],
+];
+const SRCABLE=new Set(["moteur_reference","moteur_nombre","ecopage_duree_apres_s","ecopage_distance_avant_m","ecopage_distance_efficace_m","ecopage_distance_apres_m","masse_vide_t","masse_charge_t","puissance_ch","vitesse_kmh","autonomie_km",
+  "citerne_l","longueur_min_m","largeur_min_m","reload","fin_service",
+  "approche_vitesse_kmh","approche_angle_nominal_deg","approche_angle_max_deg","ecopage_vitesse_kmh","ecopage_distance_m","ecopage_duree_s","ecopage_duree_efficace_s","ecopage_duree_avant_s","ecopage_vitesse_toucher_kmh","ecopage_vitesse_rotation_kmh","decollage_vitesse_kmh","decollage_angle_nominal_deg","decollage_angle_max_deg"]);
+const NUMK=new Set(["moteur_nombre","ecopage_duree_apres_s","ecopage_distance_avant_m","ecopage_distance_efficace_m","ecopage_distance_apres_m","masse_vide_t","masse_charge_t","puissance_ch","vitesse_kmh","autonomie_km",
+  "citerne_l","longueur_min_m","largeur_min_m","reload","fin_service","speed","range",
+  "approche_vitesse_kmh","approche_angle_nominal_deg","approche_angle_max_deg","ecopage_vitesse_kmh","ecopage_distance_m","ecopage_duree_s","ecopage_duree_efficace_s","ecopage_duree_avant_s","ecopage_vitesse_toucher_kmh","ecopage_vitesse_rotation_kmh","decollage_vitesse_kmh","decollage_angle_nominal_deg","decollage_angle_max_deg"]);
+const SRCOPT=[["","— non renseigné"],["constructeur","constructeur"],["publie","publiée"],
+  ["estime","estimée"],["interpole","interpolée"],["analogie","analogie"],["concept","concept"],
+  ["calcul","calculée"]];
+/* "calculée" : grandeur dérivée par le bloc de calcul partagé, jamais saisie.
+   Elle ne vaut pas mieux que ses entrées, donc elle compte comme interprétée. */
+const TROUVE=s=>s==="constructeur"||s==="publie";
+
+/* ---------- mémoire locale (brouillon) ---------- */
+const CLE="editeur-flotte"; let LOCAL_OK=true;
+function sauverLocal(){ if(!LOCAL_OK) return;
+  try{ localStorage.setItem(CLE, JSON.stringify(DATA)); }catch(e){ LOCAL_OK=false; } }
+(function lireLocal(){
+  try{ const j=localStorage.getItem(CLE);
+    if(j){ const d=JSON.parse(j); if(d && Array.isArray(d.fleet)){ DATA=d; FLEET=DATA.fleet;
+      setTimeout(()=>msg("Brouillon local repris (modifications non exportées d'une session précédente). "
+        +"« Oublier le brouillon local » revient au fichier embarqué.","info"),50); } }
+  }catch(e){ LOCAL_OK=false; }
+})();
+
+let MSGT=null;
+function msg(t,type){ const m=S("msg"); if(MSGT)clearTimeout(MSGT);
+  if(!t){m.style.display="none";return;}
+  m.className=type||"info"; m.id="msg"; m.textContent=t; m.style.display="block";
+  MSGT=setTimeout(()=>m.style.display="none",12000); }
+
+/* ---------- liste ---------- */
+function badge(a,k,lab){
+  const s=a[k+"_src"]||"";
+  if(a[k]===undefined||a[k]===null||a[k]==="") return "";
+  const cl=s===""?"":(TROUVE(s)?"c":"e");
+  return '<span class="bdg '+cl+'">'+lab+(s===""?" ?":(TROUVE(s)?"":" *"))+"</span>";
+}
+function rend(){
+  S("stat").textContent=FLEET.length+" appareils — version "+(DATA.meta&&DATA.meta.version||"?")
+    +". Vert : donnée trouvée. Jaune * : interprétée. « ? » : statut non renseigné.";
+  S("liste").innerHTML=FLEET.map((a,i)=>{
+    const nb=Object.keys(a).filter(k=>k.endsWith("_commentaire")&&a[k]).length;
+    return '<div class="card"><h3>'+esc(a.name||"(sans nom)")+'</h3><div class="id">'+esc(a.id||"")+'</div>'
+    +'<div class="l">'+(a.masse_charge_t!=null?("<b>"+fr(a.masse_charge_t)+" t</b> au décollage · "):"")
+      +(a.puissance_ch!=null?("<b>"+fr(a.puissance_ch)+" ch</b> · "):"")
+      +(a.citerne_l!=null?("<b>"+fr(a.citerne_l)+" L</b>"):"")+"</div>"
+    +'<div class="badges">'+badge(a,"masse_charge_t","masse")+badge(a,"puissance_ch","puissance")
+      +badge(a,"citerne_l","citerne")+badge(a,"vitesse_kmh","vitesse")
+      +'<span class="bdg">'+nb+" commentaires</span></div>"
+    +'<div class="act"><button class="btn mini" data-ed="'+i+'">Éditer</button></div></div>';
+  }).join("");
+  document.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>ouvrir(+b.dataset.ed));
+}
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const fr=x=>Number(x).toLocaleString("fr-FR");
+
+/* ---------- modale ---------- */
+let EDIT=null, DELARM=false;
+function ouvrir(i){
+  EDIT=i; DELARM=false; S("m-del").textContent="Supprimer cet appareil";
+  const a=FLEET[i];
+  S("m-titre").textContent="Édition — "+(a.name||a.id||"appareil");
+  let h="";
+  SCH.forEach(([sec,rows])=>{
+    h+='<div class="msec">'+sec+"</div>";
+    rows.forEach(([k,lab,type,src])=>{
+      const v=(a[k]===undefined||a[k]===null)?"":a[k];
+      /* type "calc" : valeur dérivée, affichée mais non saisissable. Pas de
+         data-k, donc la validation ne la relit pas et ne peut pas l'écraser. */
+      if(type==="calc"){
+        h+='<div class="mrow"><label>'+lab+'</label>'
+         +'<input value="'+esc(v)+'" disabled style="opacity:.75;font-style:italic">'
+         +'<span class="noSrc">calculée</span>'
+         +'<span class="noSrc" style="text-align:left">'+esc(a[k+"_commentaire"]||"")+'</span></div>';
+        return;
+      }
+      const wide=(type==="area");
+      if(wide){ h+='<div class="mrow wide"><label>'+lab+'</label><textarea data-k="'+k+'" rows="2">'+esc(v)+"</textarea></div>"; return; }
+      let champ;
+      if(type==="bool") champ='<select data-k="'+k+'"><option value="1"'+(a[k]?" selected":"")+'>Oui</option><option value="0"'+(a[k]?"":" selected")+">Non</option></select>";
+      else if(type==="statut") champ='<select data-k="'+k+'">'+["service","commande","etude","concept","retire"].map(s=>'<option value="'+s+'"'+(a[k]===s?" selected":"")+">"+({service:"En service",commande:"Commandé",etude:"En développement",concept:"Concept",retire:"Retiré"})[s]+"</option>").join("")+"</select>";
+      else champ='<input data-k="'+k+'" value="'+esc(v)+'">';
+      if(SRCABLE.has(k)){
+        const s=a[k+"_src"]||"", c=a[k+"_commentaire"]||"";
+        const cls=s===""?"":(TROUVE(s)?"c":"est");
+        h+='<div class="mrow"><label>'+lab+"</label>"+champ
+         +'<select class="src '+cls+'" data-src="'+k+'">'+SRCOPT.map(([v2,l2])=>'<option value="'+v2+'"'+(s===v2?" selected":"")+">"+l2+"</option>").join("")+"</select>"
+         +'<input data-com="'+k+'" value="'+esc(c)+'" placeholder="lien de la source, ou base de l\'interpolation">'
+         +"</div>";
+      }else{
+        h+='<div class="mrow"><label>'+lab+"</label>"+champ+'<span class="noSrc">—</span><span class="noSrc"></span></div>';
+      }
+    });
+  });
+  /* champs inconnus du schéma : affichés bruts pour ne rien perdre ni cacher */
+  const connus=new Set(); SCH.forEach(([_,rows])=>rows.forEach(([k])=>{connus.add(k);connus.add(k+"_src");connus.add(k+"_commentaire");}));
+  const restes=Object.keys(a).filter(k=>!connus.has(k));
+  if(restes.length){
+    h+='<div class="msec">Champs hors schéma (conservés tels quels)</div>';
+    restes.forEach(k=>{ h+='<div class="mrow wide"><label>'+k+'</label><textarea data-k="'+k+'" rows="1">'+esc(a[k]===null?"":(typeof a[k]==="object"?JSON.stringify(a[k]):a[k]))+"</textarea></div>"; });
+  }
+  S("m-corps").innerHTML=h;
+  S("m-corps").querySelectorAll("select.src").forEach(sel=>sel.onchange=()=>{
+    sel.className="src "+(sel.value===""?"":(TROUVE(sel.value)?"c":"est"));});
+  S("mbg").classList.add("open");
+}
+/* seule Annuler / Valider ferment : pas de fermeture au clic exterieur */
+S("m-annul").onclick=()=>S("mbg").classList.remove("open");
+S("m-ok").onclick=()=>{
+  const a=FLEET[EDIT];
+  S("m-corps").querySelectorAll("[data-k]").forEach(el=>{
+    const k=el.dataset.k;
+    if(el.tagName==="SELECT" && (el.options[0]&&el.options[0].value==="1")){ a[k]=el.value==="1"; return; }
+    let v=el.value;
+    if(NUMK.has(k)){
+      const t=String(v).trim();
+      if(t===""){ if(k==="fin_service") a[k]=null; else delete a[k]; return; }
+      const n=parseFloat(t.replace(/\s/g,"").replace(",",".")); if(!isNaN(n)) a[k]=n; return;
+    }
+    a[k]=v;
+  });
+  S("m-corps").querySelectorAll("[data-src]").forEach(el=>{ a[el.dataset.src+"_src"]=el.value; });
+  S("m-corps").querySelectorAll("[data-com]").forEach(el=>{ a[el.dataset.com+"_commentaire"]=el.value; });
+  if(a.vitesse_kmh!=null) a.speed=a.vitesse_kmh;
+  if(a.autonomie_km!=null) a.range=a.autonomie_km;
+  ECO.completer(a);   /* les derives suivent immediatement la saisie */
+  S("mbg").classList.remove("open");
+  sauverLocal(); rend();
+  msg("« "+(a.name||a.id)+" » mis à jour dans le brouillon. Exportez le JSON pour rendre la modification définitive.","ok");
+};
+S("m-del").onclick=()=>{
+  if(!DELARM){ DELARM=true; S("m-del").textContent="Confirmer la suppression"; return; }
+  const nom=FLEET[EDIT].name;
+  FLEET.splice(EDIT,1); S("mbg").classList.remove("open"); sauverLocal(); rend();
+  msg("« "+nom+" » retiré du brouillon. Le retrait ne devient définitif qu'au prochain export du JSON.","warn");
+};
+
+/* ---------- barre ---------- */
+S("b-add").onclick=()=>{
+  FLEET.push({id:"NOUVEL"+(FLEET.length+1),name:"Nouvel appareil",status:"etude",
+    mode_recharge:false,compatible_pelicandrome:true,
+    modification_avion_existant:false,base_cellule_occasion:false});
+  sauverLocal(); rend(); ouvrir(FLEET.length-1);
+};
+S("b-exp").onclick=()=>{
+  DATA.meta=DATA.meta||{};
+  DATA.meta.derniere_maj=(new Date()).toISOString().slice(0,10)+" — édité avec l'éditeur de flotte.";
+  const b=new Blob([JSON.stringify(DATA,null,1)],{type:"application/json"});
+  const u=URL.createObjectURL(b), l=document.createElement("a");
+  l.href=u; l.download="flotte.json"; l.click(); URL.revokeObjectURL(u);
+  msg("flotte.json exporté : c'est ce fichier qui fait foi pour tous les outils.","ok");
+};
+S("b-imp").onclick=()=>S("i-imp").click();
+S("i-imp").onchange=ev=>{
+  const f=ev.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=e=>{ try{
+    const d=JSON.parse(e.target.result);
+    const fl=Array.isArray(d)?d:(d.fleet||d.flotte);
+    if(!Array.isArray(fl)||!fl.length){ msg("JSON non reconnu : pas de liste fleet.","err"); return; }
+    DATA=Array.isArray(d)?{meta:{},fleet:fl}:d; FLEET=DATA.fleet;
+    FLEET.forEach(f=>ECO.completer(f));   /* derives recalcules a l'import */
+    sauverLocal(); rend(); msg("Import : "+FLEET.length+" appareils depuis "+f.name+".","ok");
+  }catch(err){ msg("JSON illisible : "+err.message,"err"); } };
+  r.readAsText(f); ev.target.value="";
+};
+S("b-oubli").onclick=()=>{
+  try{ localStorage.removeItem(CLE); }catch(e){}
+  DATA=JSON.parse(S("data-flotte").textContent); FLEET=DATA.fleet; rend();
+  msg("Brouillon oublié : retour au fichier embarqué dans la page.","ok");
+};
+
+/* ---------- IMPORT D'UNE FICHE D'APPAREIL ----------
+   On travaille souvent appareil par appareil : une recherche produit une fiche
+   isolee, qu'il faut verser dans le referentiel commun.
+
+   REGLE : rien n'est applique sans arbitrage. La fenetre liste TOUT ce qui
+   differe, valeur et sourcage de chaque cote, avec un choix par ligne. Une
+   valeur importee n'est jamais ignoree en silence, et une valeur du
+   referentiel n'est jamais ecrasee en silence. C'est ce qui permet de tenir
+   une fiche a part sans risquer de perdre son travail au prochain import.
+
+   Choix conseille par defaut : le fichier gagne quand le referentiel est vide
+   (il n'y a rien a perdre) ; le referentiel gagne en cas de desaccord reel.  */
+let UN_PEND=null;
+const VIDE=v=>v===undefined||v===null||v==="";
+const CLES_META=k=>k.endsWith("_src")||k.endsWith("_commentaire");
+/* champs derives : les reprendre n'a aucun sens, ils seront recalcules */
+const DERIVES=new Set(["ecopage_distance_avant_m","ecopage_distance_efficace_m",
+  "ecopage_distance_apres_m","ecopage_distance_m","ecopage_duree_s","longueur_min_m",
+  "enginePower","moteur_puissance_unitaire_ch","speed","range"]);
+const memeValeur=(a,b)=>String(a===undefined||a===null?"":a).trim()
+                      ===String(b===undefined||b===null?"":b).trim();
+
+S("b-imp-un").onclick=()=>S("i-imp-un").click();
+S("i-imp-un").onchange=ev=>{
+  const f=ev.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=e=>{ try{
+    let d=JSON.parse(e.target.result);
+    if(Array.isArray(d)) d=d[0];
+    else if(d && Array.isArray(d.fleet)) d=d.fleet[0];
+    if(!d || typeof d!=="object") throw new Error("aucun objet d'appareil");
+    if(!d.id && !d.name) throw new Error("ni id ni name : impossible de savoir de quel appareil il s'agit");
+
+    let cible=FLEET.find(a=>a.id===d.id) || FLEET.find(a=>a.name===d.name);
+    const creation=!cible;
+    if(creation){
+      cible={id:d.id||("NOUVEL"+(FLEET.length+1)), name:d.name||"Nouvel appareil",
+             status:d.status||"etude", mode_recharge:!!d.mode_recharge,
+             compatible_pelicandrome:d.compatible_pelicandrome!==false,
+             modification_avion_existant:!!d.modification_avion_existant,
+             base_cellule_occasion:!!d.base_cellule_occasion};
+    }
+    let identiques=0, derivesIgnores=0;
+    const lignes=[];
+    Object.keys(d).forEach(k=>{
+      if(CLES_META(k)) return;
+      if(VIDE(d[k])) return;
+      if(DERIVES.has(k)){ derivesIgnores++; return; }
+      if(memeValeur(d[k],cible[k])){ identiques++; return; }
+      lignes.push({k, trou:VIDE(cible[k]),
+        av:cible[k], avSrc:cible[k+"_src"]||"", avCom:cible[k+"_commentaire"]||"",
+        ap:d[k],     apSrc:d[k+"_src"]||"",     apCom:d[k+"_commentaire"]||""});
+    });
+
+    if(!lignes.length){
+      if(creation){ FLEET.push(cible); ECO.completer(cible); sauverLocal(); rend();
+        msg("Fiche « "+cible.name+" » créée.","ok"); }
+      else msg("Le fichier ne dit rien de neuf sur « "+cible.name+" » : "
+        +identiques+" champ(s) identiques"
+        +(derivesIgnores?", "+derivesIgnores+" champ(s) calculés ignorés":"")+".","info");
+      return;
+    }
+    UN_PEND={cible, lignes, creation};
+    S("m-un-titre").textContent=(creation?"Nouvelle fiche — ":"Arbitrage — ")+cible.name;
+    const nTrous=lignes.filter(l=>l.trou).length;
+    S("un-resume").innerHTML=
+      "<b>"+lignes.length+"</b> désaccord(s) : <b>"+nTrous+"</b> champ(s) vides dans le référentiel"
+      +" et <b>"+(lignes.length-nTrous)+"</b> vraie(s) divergence(s). "
+      +identiques+" champ(s) identiques"
+      +(derivesIgnores?" et "+derivesIgnores+" champ(s) calculés":"")+" ne sont pas listés.";
+    S("un-corps").innerHTML=lignes.map((l,i)=>{
+      const cote=(v,src,com,coul)=>
+        '<div style="font-weight:600;color:'+coul+'">'+(VIDE(v)?"<i style=\"opacity:.6\">(vide)</i>":esc(String(v).slice(0,180)))+"</div>"
+        +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px">source : '
+        +(src?esc(src):"<i>non renseignée</i>")+"</div>"
+        +(com?'<div style="font-size:.72rem;color:var(--faint);margin-top:2px">'+esc(com.slice(0,220))+"</div>":"");
+      return '<tr style="border-bottom:1px solid var(--line)'+(l.trou?";background:rgba(34,197,94,.05)":"")+'">'
+       +'<td style="padding:8px;vertical-align:top;color:#38bdf8;font-family:ui-monospace,monospace">'+esc(l.k)
+       +(l.trou?'<div style="font-size:.7rem;color:var(--ok);font-family:inherit">champ vide</div>':"")+"</td>"
+       +'<td style="padding:8px;vertical-align:top">'+cote(l.av,l.avSrc,l.avCom,"var(--warn)")+"</td>"
+       +'<td style="padding:8px;vertical-align:top">'+cote(l.ap,l.apSrc,l.apCom,"var(--ok)")+"</td>"
+       +'<td style="padding:8px;vertical-align:top;white-space:nowrap">'
+       +'<label style="display:block;cursor:pointer;color:var(--warn)"><input type="radio" name="un_'+i+'" value="ref"'
+       +(l.trou?"":" checked")+"> réf.</label>"
+       +'<label style="display:block;cursor:pointer;color:var(--ok)"><input type="radio" name="un_'+i+'" value="fic"'
+       +(l.trou?" checked":"")+"> fichier</label></td></tr>";
+    }).join("");
+    const tous=v=>document.querySelectorAll('#un-corps input[value="'+v+'"]').forEach(r=>r.checked=true);
+    S("un-tout-ref").onclick=()=>tous("ref");
+    S("un-tout-fic").onclick=()=>tous("fic");
+    S("un-defaut").onclick=()=>lignes.forEach((l,i)=>{
+      document.querySelector('input[name="un_'+i+'"][value="'+(l.trou?"fic":"ref")+'"]').checked=true;});
+    S("mbg-un").classList.add("open");
+  }catch(err){ msg("Fiche illisible : "+err.message,"err"); } };
+  r.readAsText(f); ev.target.value="";
+};
+S("m-un-annul").onclick=()=>{ S("mbg-un").classList.remove("open"); UN_PEND=null; };
+S("m-un-ok").onclick=()=>{
+  if(!UN_PEND) return;
+  const {cible,lignes,creation}=UN_PEND; let n=0;
+  if(creation) FLEET.push(cible);
+  lignes.forEach((l,i)=>{
+    const c=document.querySelector('input[name="un_'+i+'"]:checked');
+    if(!c || c.value!=="fic") return;
+    cible[l.k]=NUMK.has(l.k)&&!isNaN(parseFloat(l.ap))?parseFloat(l.ap):l.ap;
+    /* le sourcage suit sa valeur : reprendre un chiffre sans sa provenance
+       reviendrait a fabriquer une donnee sans origine. */
+    cible[l.k+"_src"]=l.apSrc;
+    cible[l.k+"_commentaire"]=l.apCom;
+    n++;
+  });
+  if(cible.vitesse_kmh!=null) cible.speed=cible.vitesse_kmh;
+  if(cible.autonomie_km!=null) cible.range=cible.autonomie_km;
+  ECO.completer(cible);
+  S("mbg-un").classList.remove("open"); UN_PEND=null;
+  sauverLocal(); rend();
+  msg((creation?"Fiche « "+cible.name+" » créée. ":"")+n+" valeur(s) reprises du fichier, "
+     +(lignes.length-n)+" conservée(s) du référentiel. Exportez le JSON pour rendre le choix définitif.","ok");
+};
+
+/* ---------- MODULE IMPORT CSV (DIFF / MERGE) ---------- */
+S("b-imp-csv").onclick = () => S("i-imp-csv").click();
+let pendingCsvDiffs = [];
+
+function parseCSVLine(text) {
+  const result = [];
+  let current = "", inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuote) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { current += '"'; i++; } else { inQuote = false; }
+      } else { current += c; }
+    } else {
+      if (c === '"') { inQuote = true; }
+      else if (c === ';' || c === ',') { result.push(current); current = ""; }
+      else { current += c; }
+    }
+  }
+  result.push(current);
+  return result.map(s => s.trim());
+}
+
+S("i-imp-csv").onchange = ev => {
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const lines = e.target.result.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim());
+      if(lines.length < 2) { msg("CSV vide ou mal formaté.", "err"); return; }
+      
+      const headers = parseCSVLine(lines[0]);
+      pendingCsvDiffs = [];
+
+      for(let i = 1; i < lines.length; i++) {
+        const row = parseCSVLine(lines[i]);
+        if(!row[0]) continue;
+        const rowObj = {};
+        headers.forEach((h, idx) => rowObj[h] = row[idx]);
+        
+        const avion = FLEET.find(a => a.id === rowObj.id);
+        if(!avion) continue;
+
+        headers.forEach(k => {
+          if(k === "id" || k === "name") return;
+          let csvVal = rowObj[k];
+          if(csvVal === undefined || csvVal === "") return; // On ignore les cellules vides
+          
+          if(NUMK.has(k)) {
+            csvVal = parseFloat(csvVal.replace(/\s/g, "").replace(",", "."));
+            if(isNaN(csvVal)) csvVal = null;
+          } else if(csvVal === "true") csvVal = true;
+          else if(csvVal === "false") csvVal = false;
+
+          let jsonVal = avion[k] === undefined || avion[k] === null ? "" : avion[k];
+          
+          // Comparaison stricte
+          if(String(csvVal) !== String(jsonVal)) {
+            pendingCsvDiffs.push({ avion, key: k, jsonVal, csvVal });
+          }
+        });
+      }
+
+      if(pendingCsvDiffs.length === 0) {
+        msg("Aucune différence trouvée ! Le JSON est déjà parfaitement aligné sur le CSV.", "info"); return;
+      }
+
+      S("csv-diff-body").innerHTML = pendingCsvDiffs.map((d, i) => `
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:8px;font-weight:bold;">${d.avion.name || d.avion.id}</td>
+          <td style="padding:8px;color:#38bdf8;font-family:monospace;">${d.key}</td>
+          <td style="padding:8px;opacity:0.8;">${esc(d.jsonVal === "" ? "(vide)" : d.jsonVal)}</td>
+          <td style="padding:8px;font-weight:600;">${esc(d.csvVal === null ? "(vide)" : d.csvVal)}</td>
+          <td style="padding:8px;white-space:nowrap;">
+            <label style="cursor:pointer;color:var(--ok);margin-right:8px;"><input type="radio" name="diff_${i}" value="csv" checked> CSV</label>
+            <label style="cursor:pointer;color:var(--warn)"><input type="radio" name="diff_${i}" value="json"> JSON</label>
+          </td>
+        </tr>
+      `).join("");
+
+      S("mbg-csv").classList.add("open");
+    } catch(err) { msg("Erreur d'analyse CSV : " + err.message, "err"); }
+  };
+  r.readAsText(f); ev.target.value = "";
+};
+
+S("m-csv-annul").onclick = () => S("mbg-csv").classList.remove("open");
+S("m-csv-ok").onclick = () => {
+  let count = 0;
+  pendingCsvDiffs.forEach((d, i) => {
+    const choice = document.querySelector(`input[name="diff_${i}"]:checked`).value;
+    if(choice === "csv") {
+      if (d.csvVal === null) {
+        if (d.key === "fin_service") d.avion[d.key] = null;
+        else delete d.avion[d.key];
+      } else {
+        d.avion[d.key] = d.csvVal;
+      }
+      // Synchro des raccourcis historiques
+      if (d.key === "vitesse_kmh") d.avion.speed = d.csvVal;
+      if (d.key === "autonomie_km") d.avion.range = d.csvVal;
+      count++;
+    }
+  });
+  FLEET.forEach(x=>ECO.completer(x));
+  S("mbg-csv").classList.remove("open");
+  sauverLocal(); rend();
+  msg(count + " champ(s) mis à jour depuis le CSV. N'oubliez pas d'exporter le JSON (bouton Exporter la flotte) !", "ok");
+};
+
+rend();
+}catch(err){
+  document.body.insertAdjacentHTML("afterbegin",
+   '<div style="background:#7f1d1d;border:1px solid #ef4444;border-radius:8px;padding:14px;margin-bottom:16px">Erreur : '+err.message+"</div>");
+}
+
+
+</script>
+</body></html>
