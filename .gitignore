@@ -1,0 +1,7 @@
+﻿# Artefacts Windows
+desktop.ini
+Thumbs.db
+
+# Sauvegardes locales
+_backup/
+*.bak
