@@ -29,12 +29,12 @@ plus bas.
 ## Ce que contient le dépôt
 
 ```
-1-outils/            les pages HTML à ouvrir            11 outils
+1-outils/            les pages HTML à ouvrir            12 outils
 2-donnees/           les fichiers à y charger           39 fichiers
 3-chaine-extraction/ les scripts Python qui produisent   5 scripts
                      les données géographiques
 4-articles/          les textes rédigés                  2 articles
-5-documentation/     ce que vous lisez                  14 fiches
+5-documentation/     ce que vous lisez                  15 fiches
 6-archives/          les versions antérieures           12 fichiers
 ```
 
@@ -52,6 +52,12 @@ Le détail dossier par dossier est en bas de cette page.
 | **[profil-vol-ecopage-v18.html](1-outils/ecopage/profil-vol-ecopage-v18.html)** | Le profil de vol d'un écopage, phase par phase, à l'échelle. → [fiche](5-documentation/04-profil-vol-ecopage.md) |
 | **[editeur-flotte.html](1-outils/ecopage/editeur-flotte.html)** | L'outil qui fait autorité pour modifier le référentiel des appareils. → [fiche](5-documentation/05-editeur-flotte.md) |
 | **[comparatif-ecopeurs-poids-puissance.html](1-outils/ecopage/comparatif-ecopeurs-poids-puissance.html)** | Le rapport poids/puissance des écopeurs, et son effet sur le cycle. → [fiche](5-documentation/06-comparatif-poids-puissance.md) |
+
+### Largage — l'eau sur le feu
+
+| Outil | Ce qu'il montre |
+|---|---|
+| **[depose-eau-couvert-v1.html](1-outils/largage/depose-eau-couvert-v1.html)** | À volume d'eau égal, pourquoi le débit — pas le « souffle » — décide de ce qui atteint le sol sous couvert. → [fiche](5-documentation/13-depose-eau-couvert.md) |
 
 ### Pélicandromes — le ravitaillement en retardant
 
@@ -115,7 +121,7 @@ et il faut les avoir lues avant de citer un chiffre.
 
 ### `1-outils/` — les pages à ouvrir
 
-Onze fichiers HTML autonomes, rangés par sujet : `ecopage/`,
+Douze fichiers HTML autonomes, rangés par sujet : `ecopage/`, `largage/`,
 `pelicandromes/`, `statistiques/`. Chacun pèse entre 300 Ko et 1,3 Mo, parce
 qu'il embarque tout ce dont il a besoin — bibliothèques graphiques, polices,
 fonds de carte, données par défaut.

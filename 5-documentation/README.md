@@ -24,6 +24,7 @@ Ces deux-là suffisent pour se servir des outils.
 | [07 — Distance pélicandrome](07-distance-pelicandrome.md) | `distance_pelicandrome_v11_1.html` |
 | [08 — Cartographie interactive](08-cartographie-interactive.md) | `cartographie-interactive-v18.html` |
 | [09 — Outils statistiques](09-outils-statistiques.md) | les quatre outils de contexte |
+| [13 — Dépose de l'eau dans le couvert](13-depose-eau-couvert.md) | `depose-eau-couvert-v1.html` |
 
 ---
 

@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dépose de l'eau dans le couvert — débit, vitesse et concentration au sol</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#0f172a;
+  --card:#1e293b;
+  --line:#334155;
+  --accent:#38bdf8;
+  --ink:#e2e8f0;
+  --ink2:#94a3b8;
+  --ink3:#64748b;
+  --ok:#4ade80;
+  --warn:#fbbf24;
+  --bad:#f87171;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+#erreur{display:none;margin:0;padding:14px 18px;background:#7f1d1d;color:#fee2e2;
+  font:600 14px/1.5 var(--sans);white-space:pre-wrap;border-bottom:2px solid #ef4444}
+.wrap{max-width:1200px;margin:0 auto;padding:34px 12px 70px}
+.kicker{margin:0 0 8px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{margin:0 0 14px;font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+.lede{margin:0 0 26px;font-size:17px;color:var(--ink2);max-width:92ch}
+.lede b{color:var(--ink);font-weight:600}
+.rule-fat{height:2px;background:var(--line);border:0;margin:44px 0 30px}
+
+.zone{margin:0 0 26px}
+.cvwrap{position:relative;width:100%;background:var(--card);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+canvas.scene{display:block;width:100%;height:auto}
+.cvbar{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.cvbar .sp{flex:1 1 auto}
+
+button{font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--card);color:var(--ink);border:1px solid var(--line);
+  border-radius:4px;padding:8px 14px;transition:border-color .12s,color .12s}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#04202f}
+button.primary:hover{background:#7dd3fc;border-color:#7dd3fc;color:#04202f}
+button:disabled{opacity:.45;cursor:default;border-color:var(--line);color:var(--ink3)}
+
+.reglages{border:1px solid var(--line);border-radius:4px;background:var(--card)}
+.reglages>summary{list-style:none;cursor:pointer;padding:14px 18px;font-weight:700;font-size:15px;
+  display:flex;align-items:center;gap:10px;color:var(--ink)}
+.reglages>summary::-webkit-details-marker{display:none}
+.reglages>summary::before{content:"+";display:inline-block;width:18px;color:var(--accent);font-weight:700}
+.reglages[open]>summary::before{content:"-"}
+.reglages .inner{padding:4px 18px 20px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:16px 24px;margin-top:16px}
+.fld label{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px;
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fld label .v{color:var(--accent);font-variant-numeric:tabular-nums;font-size:14px}
+.fld input[type=range]{width:100%;accent-color:var(--accent);height:20px;margin:0}
+.fld .hint{font-size:12.5px;color:var(--ink3);margin-top:4px;line-height:1.4}
+.rowbtn{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+select{font-family:var(--sans);font-size:14px;background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:7px 10px}
+.selwrap{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink2);font-weight:600}
+
+.notes{margin-top:34px;font-size:14.5px;color:var(--ink2);max-width:96ch}
+.notes h2{font-size:19px;color:var(--ink);margin:26px 0 10px;font-weight:700}
+.notes p{margin:0 0 12px}
+.notes b{color:var(--ink);font-weight:600}
+.notes table{border-collapse:collapse;width:100%;margin:12px 0 18px;font-size:14px}
+.notes th,.notes td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.notes th{background:var(--card);color:var(--ink);font-weight:600}
+.notes td.num{text-align:right;font-variant-numeric:tabular-nums}
+.notes .src{font-size:13.5px;color:var(--ink3);line-height:1.75}
+.notes a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(56,189,248,.35)}
+.notes a:hover{border-bottom-color:var(--accent)}
+@media (max-width:760px){h1{font-size:24px}.lede{font-size:15.5px}}
+</style>
+</head>
+<body>
+<pre id="erreur"></pre>
+<div class="wrap">
+
+<p class="kicker">Feux de forêt, moyens aériens</p>
+<h1>Ce qui décide qu'une ligne tienne : le débit, pas le souffle</h1>
+<p class="lede">Ce que les opérationnels appellent « effet de souffle » recouvre deux mécanismes distincts. L'énergie d'impact, réelle mais d'appoint. Et surtout la <b>concentration au sol</b>, le <i>coverage level</i>, mesurée en litres par mètre carré : c'est elle qui décide si la ligne tient. Trois largages ci-dessous, un <b>volume d'eau strictement identique</b>. Seules changent la vitesse sol et la durée d'ouverture des trappes, donc le débit.</p>
+
+<div id="scenes"></div>
+
+<div class="zone">
+  <div class="cvwrap"><canvas class="scene" id="cv-bilan" width="1200" height="330"></canvas></div>
+  <div class="cvbar">
+    <button data-cap="bilan">Capturer le bilan</button>
+    <span class="sp"></span>
+  </div>
+</div>
+
+<hr class="rule-fat">
+
+<details class="reglages" id="reglages" open>
+<summary>Paramètres du modèle</summary>
+<div class="inner">
+  <div class="grid">
+    <div class="fld">
+      <label for="p-vol">Volume largué, identique aux trois cas <span class="v" id="v-vol"></span></label>
+      <input type="range" id="p-vol" min="2000" max="20000" step="500">
+      <div class="hint">Ordre de grandeur : 6 100 L pour un CL-415, 10 000 L pour un Q400MR ou un seau lourd.</div>
+    </div>
+    <div class="fld">
+      <label for="p-larg">Largeur de la nappe <span class="v" id="v-larg"></span></label>
+      <input type="range" id="p-larg" min="10" max="40" step="1">
+      <div class="hint">Largeur utile déposée au sol. Elle divise la concentration à volume constant.</div>
+    </div>
+    <div class="fld">
+      <label for="p-haut">Hauteur de largage <span class="v" id="v-haut"></span></label>
+      <input type="range" id="p-haut" min="15" max="80" step="1">
+      <div class="hint">Paramètre dominant dans la réalité. Tenu constant ici pour isoler l'effet du débit.</div>
+    </div>
+    <div class="fld">
+      <label for="p-vav">Vitesse sol de l'avion <span class="v" id="v-vav"></span></label>
+      <input type="range" id="p-vav" min="140" max="320" step="5">
+      <div class="hint">Un largage se fait à basse vitesse, pas en croisière.</div>
+    </div>
+    <div class="fld">
+      <label for="p-vhe">Vitesse sol de l'hélicoptère <span class="v" id="v-vhe"></span></label>
+      <input type="range" id="p-vhe" min="40" max="180" step="5">
+      <div class="hint">Il peut ralentir jusqu'au stationnaire, ce qu'un avion ne peut pas.</div>
+    </div>
+    <div class="fld">
+      <label for="p-dur">Durée d'ouverture, cas 1 et 2 <span class="v" id="v-dur"></span></label>
+      <input type="range" id="p-dur" min="2" max="10" step="0.5">
+      <div class="hint">Le cas 3 utilise exactement le double de cette durée.</div>
+    </div>
+  </div>
+  <div class="rowbtn">
+    <button class="primary" id="btn-all">Relancer les trois largages</button>
+    <button id="btn-reset">Valeurs par défaut</button>
+    <span class="selwrap">Vitesse de l'animation
+      <select id="p-spd">
+        <option value="1">temps réel</option>
+        <option value="0.5">demi</option>
+        <option value="0.25">quart</option>
+      </select>
+    </span>
+  </div>
+</div>
+</details>
+
+<div class="notes" id="notes">
+<h2>Ce qu'est un coverage level, et ce qu'il n'est pas</h2>
+<p>Le <b>coverage level</b> est d&eacute;fini par le NWCG comme &laquo;&nbsp;the recommended amount of aerially applied retardant keyed to the NFDRS fuel models and/or fire behavior models. Coverage level 2 represents 2 gallons of retardant per hundred square feet&nbsp;&raquo;. Il se mesure par la m&eacute;thode <i>cup-and-grid</i>, une grille de gobelets pos&eacute;e sur terrain plat et d&eacute;gag&eacute;, en gallons par 100 pieds carr&eacute;s de <b>surface au sol</b>. Soit <b>1 CL = 0,41 L/m&sup2;</b>.</p>
+<p>Trois cons&eacute;quences, et elles comptent pour lire ce sch&eacute;ma.</p>
+<p>D'abord, le CL est <b>un seul nombre par largage</b> : la quantit&eacute; appliqu&eacute;e par unit&eacute; de surface au sol sur la zone trait&eacute;e. Il n'existe pas un &laquo;&nbsp;CL des cimes&nbsp;&raquo; distinct d'un &laquo;&nbsp;CL du sol&nbsp;&raquo;. C'est pourquoi les seuils de prescription sont port&eacute;s ici par la seule ligne <i>CL appliqu&eacute;</i>.</p>
+<p>Ensuite, la table CL 2 sur herbe, CL 3 &agrave; 4 sur maquis, CL 6 &agrave; 8 sur futaie est index&eacute;e sur le <b>combustible dominant</b>. C'est ce qu'on commande et qu'on l&acirc;che, pas ce qu'on retrouve dans une strate. Les trois valeurs sont des alternatives, jamais un cumul.</p>
+<p>Enfin, si la futaie demande 6 &agrave; 8 l&agrave; o&ugrave; l'herbe demande 2, c'est pr&eacute;cis&eacute;ment &agrave; cause de l'interception que montre l'animation : sous couvert ferm&eacute;, une grande part de la charge n'atteint jamais les combustibles de surface. La litt&eacute;rature technique le dit sans d&eacute;tour : &laquo;&nbsp;a lower viscosity retardant or a heavier coverage level may increase penetration through the canopy&nbsp;&raquo;. <b>On surcharge en haut pour qu'il en reste assez en bas.</b></p>
+<p><b>R&eacute;serve importante.</b> La table officielle de coverage level <b>ne mod&eacute;lise pas explicitement l'interception</b> : c'est une limite reconnue, la table &laquo;&nbsp;does not consider the influence of fire behaviour, weather conditions or canopy interception&nbsp;&raquo;. La surcharge en futaie est donc une pratique empiriquement int&eacute;gr&eacute;e &agrave; la prescription, pas une correction calcul&eacute;e. Des travaux r&eacute;cents chiffrent l'interception par le couvert autour de 28 &agrave; 39&nbsp;% selon l'indice foliaire.</p>
+
+<h2>Comment lire ces trois largages</h2>
+<p>Quatre grandeurs suffisent &agrave; d&eacute;crire un largage, et elles s'encha&icirc;nent.</p>
+<table><thead><tr><th>Grandeur</th><th>Calcul</th><th>Ce qu'elle d&eacute;cide</th></tr></thead><tbody>
+<tr><td>D&eacute;bit de sortie</td><td class="num">Q = V / t</td><td>la p&eacute;n&eacute;tration dans le couvert</td></tr>
+<tr><td>Longueur de ligne</td><td class="num">L = v &times; t</td><td>la distance r&eacute;ellement trait&eacute;e</td></tr>
+<tr><td><b>CL appliqu&eacute;</b></td><td class="num"><b>Q / (v &times; largeur) / 0,41</b></td><td>ce qu'on l&acirc;che sur la zone, avant interception</td></tr>
+<tr><td>CL arriv&eacute; au sol</td><td class="num">CL appliqu&eacute; &times; taux de transmission</td><td>ce qui atteint les combustibles de surface</td></tr>
+</tbody></table>
+<p>L'identit&eacute; centrale est la troisi&egrave;me ligne. Le CL appliqu&eacute; vaut <b>d&eacute;bit divis&eacute; par (vitesse sol &times; largeur de nappe)</b>, ce qui est &eacute;quivalent &agrave; V / (L &times; largeur). Elle recoupe la pratique des essais am&eacute;ricains, o&ugrave; l'on estime la longueur de ligne obtenue au coverage level voulu &agrave; partir de trois param&egrave;tres seulement : <i>airspeed, drop height, and flow rate</i>.</p>
+<p>C'est ce qui produit le r&eacute;sultat des trois cas.</p>
+<p>Les cas 1 et 2 ont le m&ecirc;me volume et la m&ecirc;me dur&eacute;e d'ouverture, donc le <b>m&ecirc;me d&eacute;bit</b>, donc la m&ecirc;me qualit&eacute; de p&eacute;n&eacute;tration. Mais l'h&eacute;licopt&egrave;re, deux fois plus lent, concentre ce d&eacute;bit sur deux fois moins de distance : son CL appliqu&eacute; double, et la ligne obtenue est deux fois plus courte. C'est la surcharge dont on parle.</p>
+<p>Le cas 3 rattrape la distance en doublant la dur&eacute;e d'ouverture. Le CL appliqu&eacute; redevient celui de l'avion, mais le d&eacute;bit tombe de moiti&eacute; : la colonne se fragmente plus t&ocirc;t et plus fin, l'essentiel de la charge reste accroch&eacute; dans les cimes et le sol ne re&ccedil;oit plus assez. <b>Le CL appliqu&eacute; ne suffit donc pas &agrave; d&eacute;crire un largage : &agrave; CL appliqu&eacute; identique, c'est le d&eacute;bit qui d&eacute;cide de la r&eacute;partition.</b></p>
+
+<h2>Ce que ce sch&eacute;ma simplifie</h2>
+<p>C'est une illustration, pas un outil de dimensionnement. Aucun chiffre affich&eacute; ne doit &ecirc;tre repris comme une mesure.</p>
+<p>Le <b>seuil de CL 2 retenu au sol</b> est une transposition de ma part, pas un standard publi&eacute;. La prescription officielle porte sur le CL appliqu&eacute;, jamais sur ce qui subsiste sous couvert. J'applique ici &agrave; la strate herbac&eacute;e r&eacute;siduelle la valeur demand&eacute;e sur herbe, parce que c'est ce combustible qui porte le feu courant. C'est d&eacute;fendable, ce n'est pas sourc&eacute;.</p>
+<p>L'&eacute;chelle verticale est exag&eacute;r&eacute;e par rapport &agrave; l'&eacute;chelle horizontale : les 1000 pixels de la zone de largage valent environ 280 m au sol, les arbres sont &agrave; une autre &eacute;chelle, et l'appareil n'est &agrave; l'&eacute;chelle de rien.</p>
+<p>La hauteur de largage est, dans la r&eacute;alit&eacute;, le param&egrave;tre dominant. Elle est tenue constante ici pour isoler l'effet du d&eacute;bit. Le curseur permet de la faire varier, mais son influence est mod&eacute;lis&eacute;e grossi&egrave;rement.</p>
+<p>La fragmentation est r&eacute;duite &agrave; deux classes de gouttes : les gros fragments, qui traversent le couvert, et les fines gouttelettes, qui d&eacute;rivent et s'&eacute;vaporent. La r&eacute;alit&eacute; est un spectre continu, gouvern&eacute; par la rupture de colonne et la rupture de surface. Les probabilit&eacute;s d'interception par strate sont calibr&eacute;es pour produire un contraste lisible, elles ne sont pas mesur&eacute;es.</p>
+<p>Le vent, la colonne convective du feu, la pente et l'orientation du vol ne sont pas repr&eacute;sent&eacute;s. La largeur de nappe est trait&eacute;e comme uniforme sur toute la ligne, alors qu'elle varie, et que celle d'un h&eacute;licopt&egrave;re est plus &eacute;troite que celle d'un avion.</p>
+
+<h2>Deux points &agrave; garder en t&ecirc;te</h2>
+<p>La DGSCGC avait &eacute;mis deux r&eacute;serves sur l'A400M : sur sa manoeuvrabilit&eacute; pour intervenir en relief accident&eacute;, et sur l'efficacit&eacute; du concept d'extinction par effet de souffle de l'eau. Le terme vient donc bien de la S&eacute;curit&eacute; civile, ce n'est pas une invention journalistique. Mais ce que mesurent les essais, ce n'est pas un souffle : c'est une concentration au sol.</p>
+<p>L'apport des moyens a&eacute;riens dans l'extinction d'un feu d'espaces naturels d&eacute;passe rarement <b>5 &agrave; 7&nbsp;%</b>. Les 93 &agrave; 95&nbsp;% restants sont le fait des &eacute;quipes au sol. Un largage ralentit un front, prot&egrave;ge un point sensible, ouvre une fen&ecirc;tre aux hommes du sol. Il n'&eacute;teint pas.</p>
+
+<h2>Sources</h2>
+<p class="src">D&eacute;finition du coverage level : <a href="https://www.nwcg.gov/node/1723142">NWCG Glossary, &laquo;&nbsp;coverage level&nbsp;&raquo;</a>. M&eacute;thode de mesure et niveaux de contour de 0,5 &agrave; 10 gal/100&nbsp;ft&sup2; : <a href="https://www.fs.usda.gov/rm/fire/pubs/pdfpubs/pdf00572868/pdf00572868dpi300.pdf">USDA Forest Service, <i>Drop Testing Airtankers: A Discussion of the Cup-and-Grid Method</i></a> et <a href="https://www.fs.usda.gov/rm/fire/pubs/pdfpubs/pdf00572852/pdf00572852.pdf">USFS, <i>Airtanker Drop Guides</i></a>. Table des coverage levels par mod&egrave;le de combustible : <a href="https://www.fs.usda.gov/rm/fire/pubs/pdfpubs/user_gd/ug-06.pdf">USFS, <i>Coverage Levels</i></a>. Effet de la viscosit&eacute; et du coverage level sur la p&eacute;n&eacute;tration du couvert, et limite de la table sur l'interception : <a href="https://www.sciencedirect.com/science/article/pii/S0379711223003247">Penney et al., <i>Fire Safety Journal</i></a>. Quantification de l'interception par le couvert : <a href="https://link.springer.com/article/10.1007/s44196-026-01331-x">Springer, <i>Three-Dimensional Response-Surface Modeling [...] Canopy Interception and Ground Deposition During Aerial Firefighting</i></a>.</p>
+</div>
+
+</div>
+<script>
+"use strict";
+try{
+
+/* =======================================================================
+   MODELE
+   -----------------------------------------------------------------------
+   1 CL (coverage level) = 1 gallon US / 100 ft2 = 0,41 L/m2.
+   CL incident   = V / (L x W) / 0,41      avec L = v x t (longueur de ligne)
+   Debit         = Q = V / t               (litres par seconde en sortie)
+   Penetration   = (Q/Qref)^0,75 x (Href/h)^0,5
+   Comme Q = q x v (q = litres par metre de ligne), le debit resume a lui
+   seul les deux leviers evoques : la charge lineique et la vitesse sol.
+   ======================================================================= */
+
+var CLU  = 0.41;      /* L/m2 pour 1 CL */
+var QREF = 2400;      /* L/s de reference : penetration = 1 */
+var HREF = 40;        /* m de reference */
+var NPART = 2000;     /* echantillons par largage */
+
+/* probabilite de traverser une strate, par classe de goutte */
+var PASS = { canopy:{gros:0.86, fin:0.12}, shrub:{gros:0.90, fin:0.25} };
+/* fraction de masse laissee sur place en traversant */
+var SHED = { canopy:0.18, shrub:0.15 };
+
+/* objectifs de concentration, par combustible dominant */
+var STRATES = [
+  { key:"canopy", nom:"Cimes, futaie",       clMin:6, clMax:8, col:"#3d8f5c" },
+  { key:"shrub",  nom:"Sous-bois, maquis",   clMin:3, clMax:4, col:"#8aa33d" },
+  { key:"ground", nom:"Strate herbacée, sol",clMin:2, clMax:2, col:"#c99a3a" }
+];
+
+/* =======================  GEOMETRIE DU CANEVAS  ======================= */
+var W = 1200, H = 816;
+var GUT = 150;                 /* gouttiere de gauche, hors zone de largage */
+var X0 = 160, X1 = 1160;       /* zone de largage : 1000 px exactement */
+var HEAD_H = 38;
+var Y_RULER = 58;
+var Y_CANOPY_TOP = 246, Y_CANOPY_BOT = 364;
+var Y_SHRUB_TOP  = 368, Y_SHRUB_BOT  = 470;
+var Y_GROUND = 492, Y_SOIL_BOT = 510;
+var STRIP_TOP = 520, STRIP_BOT = 600;
+var RES_TOP = 610;
+var G = 900;                   /* px/s2 */
+var NB = 125, BW = W/NB;       /* seaux de comptage */
+
+/* ==========================  PALETTE SCENE  =========================== */
+var C = {
+  head:"#16202f", headLine:"#334155",
+  sky:"#15202e", skyLow:"#1b2839", haze:"#20303f",
+  hill:"#1a2634", hillFar:"#172230",
+  soil:"#2b2318", soilTop:"#3a3122", soilWet:"#241d14",
+  ink:"#e2e8f0", ink2:"#94a3b8", ink3:"#64748b",
+  line:"#334155", card:"#1e293b", bg:"#0f172a",
+  water:"#38bdf8", waterHi:"#bae6fd", waterDeep:"#0e7fb8", waterFine:"#7cc9e8",
+  ok:"#4ade80", warn:"#fbbf24", bad:"#f87171"
+};
+var VEG = {
+  pinBack:{ d:"#17301f", m:"#1f4029", l:"#2a5335", t:"#2b2418" },
+  pin:    { d:"#173a26", m:"#255c39", l:"#357f4b", t:"#3b3022" },
+  chene:  { d:"#1a3a22", m:"#2a5f33", l:"#3d8145", t:"#3b3022" },
+  cypres: { d:"#14331f", m:"#1f5230", l:"#2e7040", t:"#332a1e" },
+  maquis: { d:"#33461b", m:"#4d6626", l:"#6b8735", t:"#3a3020" },
+  ciste:  { d:"#3d431a", m:"#5c6524", l:"#7d8734", t:"#3a3020" },
+  herbe:  { d:"#5e5a22", m:"#877c2e", l:"#a8993c" }
+};
+
+/* ============================  UTILITAIRES  =========================== */
+function rng(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function cl(v,a,b){ return v<a?a:(v>b?b:v); }
+function h2r(h){ h=h.replace("#",""); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function r2h(r){ return "#"+r.map(function(v){ return Math.round(cl(v,0,255)).toString(16).padStart(2,"0"); }).join(""); }
+function mix(a,b,t){ var A=h2r(a),B=h2r(b); return r2h([0,1,2].map(function(i){ return A[i]+(B[i]-A[i])*t; })); }
+function wetc(c){ return mix(mix(c,"#000000",0.26),"#1d6f96",0.32); }
+function f1(v){ return (Math.round(v*10)/10).toString().replace(".",","); }
+function n1(v){ return Math.round(v*10)/10; }
+function f2(v){ return (Math.round(v*100)/100).toString().replace(".",","); }
+function fcl(v){ return v.toFixed(1).replace(".",","); }
+function fL(v){ return v.toFixed(2).replace(".",","); }
+function f0(v){ return Math.round(v).toString(); }
+function fmil(v){ return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g," "); }
+
+/* ========================  DESSINS SVG EMBARQUES  =====================
+   Aucun asset distant. Tout est genere ici puis rasterise en <img>.
+   Chaque <svg> porte width et height explicites en plus du viewBox.
+   ===================================================================== */
+function ell(x,y,rx,ry,rot,fill){
+  return '<ellipse cx="'+n1(x)+'" cy="'+n1(y)+'" rx="'+n1(rx)+'" ry="'+n1(ry)+'"'
+    + (rot ? ' transform="rotate('+n1(rot)+' '+n1(x)+' '+n1(y)+')"' : '')
+    + ' fill="'+fill+'"/>';
+}
+function svgOpen(w,h){ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+h
+  +'" width="'+(w*2)+'" height="'+(h*2)+'">'; }
+
+/* --- arbre : pin d'Alep, chene vert, cypres ------------------------- */
+function svgArbre(kind, seed, wet){
+  var R = rng(seed), p = VEG[kind];
+  var col = wet ? wetc : function(c){ return c; };
+  var cx = 110 + (R()-0.5)*22;
+  var k  = 0.90 + R()*0.22;
+  var tw = kind==="cypres" ? 7 : (kind==="chene" ? 13 : 10);
+  var cbot = kind==="chene" ? 176 : (kind==="cypres" ? 158 : 166);
+  var b;
+  if(kind==="chene"){
+    b = [[cx,118,76,52,0],[cx-48,98,46,40,0],[cx+50,102,44,38,0],[cx-8,64,60,44,0],[cx+26,76,44,34,0]];
+  } else if(kind==="cypres"){
+    b = [[cx,92,30,76,0],[cx-15,58,22,40,0],[cx+13,120,24,44,0],[cx,30,17,26,0]];
+  } else {
+    b = [[cx,120,88,27,-2],[cx-54,96,46,21,-14],[cx+52,100,44,20,12],
+         [cx-16,72,62,27,-5],[cx+30,80,44,22,7],[cx-2,46,42,22,0]];
+  }
+  b = b.map(function(o){ return [o[0]+(R()-0.5)*11, o[1]+(R()-0.5)*9, o[2]*k, o[3]*k, o[4]]; });
+
+  var s = svgOpen(220,320);
+  s += '<path d="M'+(110-tw)+' 320 Q'+n1(110-tw*0.55)+' 214 '+n1(cx-tw*0.4)+' '+cbot
+     + ' L'+n1(cx+tw*0.4)+' '+cbot+' Q'+n1(110+tw*0.55)+' 214 '+(110+tw)+' 320 Z" fill="'+col(p.t)+'"/>';
+  if(kind!=="cypres"){
+    s += '<path d="M'+n1(cx)+' '+(cbot+8)+' L'+n1(cx-40)+' '+(cbot-24)
+       + ' M'+n1(cx)+' '+(cbot+22)+' L'+n1(cx+36)+' '+(cbot-12)
+       + '" stroke="'+col(p.t)+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  }
+  b.forEach(function(o){ s += ell(o[0]+7,o[1]+10,o[2],o[3],o[4],col(p.d)); });
+  b.forEach(function(o){ s += ell(o[0],o[1],o[2],o[3],o[4],col(p.m)); });
+  b.forEach(function(o){ s += ell(o[0]-6,o[1]-10,o[2]*0.62,o[3]*0.58,o[4],col(p.l)); });
+  if(wet){
+    for(var i=0;i<6;i++){
+      var o = b[(R()*b.length)|0];
+      s += '<circle cx="'+n1(o[0]+(R()-0.5)*o[2]*1.5)+'" cy="'+n1(o[1]+(R()-0.5)*o[3]*1.6)
+         + '" r="'+n1(1.6+R()*2.1)+'" fill="'+C.waterHi+'" opacity="0.85"/>';
+    }
+  }
+  return s+'</svg>';
+}
+
+/* --- arbuste : maquis, ciste ---------------------------------------- */
+function svgArbuste(kind, seed, wet){
+  var R = rng(seed), p = VEG[kind];
+  var col = wet ? wetc : function(c){ return c; };
+  var k = 0.85 + R()*0.3, cx = 85 + (R()-0.5)*14;
+  var b = [[cx,92,56,34,0],[cx-41,102,34,25,0],[cx+41,100,32,24,0],[cx-7,64,44,30,0]];
+  b = b.map(function(o){ return [o[0]+(R()-0.5)*9, o[1]+(R()-0.5)*7, o[2]*k, o[3]*k, 0]; });
+  var s = svgOpen(170,130);
+  for(var i=0;i<4;i++){
+    s += '<path d="M'+n1(cx)+' 130 Q'+n1(cx+(R()-0.5)*20)+' '+n1(104-R()*16)+' '
+       + n1(cx+(R()-0.5)*70)+' '+n1(74+R()*24)
+       + '" stroke="'+col(p.t)+'" stroke-width="'+n1(2.4+R()*1.8)+'" fill="none" stroke-linecap="round"/>';
+  }
+  b.forEach(function(o){ s += ell(o[0]+5,o[1]+7,o[2],o[3],0,col(p.d)); });
+  b.forEach(function(o){ s += ell(o[0],o[1],o[2],o[3],0,col(p.m)); });
+  b.forEach(function(o){ s += ell(o[0]-4,o[1]-7,o[2]*0.6,o[3]*0.55,0,col(p.l)); });
+  if(wet){
+    for(var j=0;j<4;j++){
+      var o = b[(R()*b.length)|0];
+      s += '<circle cx="'+n1(o[0]+(R()-0.5)*o[2]*1.4)+'" cy="'+n1(o[1]+(R()-0.5)*o[3]*1.5)
+         + '" r="'+n1(1.4+R()*1.8)+'" fill="'+C.waterHi+'" opacity="0.85"/>';
+    }
+  }
+  return s+'</svg>';
+}
+
+/* --- touffe d'herbe seche -------------------------------------------- */
+function svgHerbe(seed, wet){
+  var R = rng(seed), p = VEG.herbe;
+  var col = wet ? wetc : function(c){ return c; };
+  var tons = [col(p.d), col(p.m), col(p.l)];
+  var s = svgOpen(100,80), n = 7 + ((R()*5)|0);
+  for(var i=0;i<n;i++){
+    var x0 = 14 + R()*72, len = 26 + R()*42, dx = (R()-0.5)*38;
+    s += '<path d="M'+n1(x0)+' 80 Q'+n1(x0+dx*0.32)+' '+n1(80-len*0.62)+' '+n1(x0+dx)+' '+n1(80-len)
+       + '" stroke="'+tons[(R()*3)|0]+'" stroke-width="'+n1(2.2+R()*1.9)+'" fill="none" stroke-linecap="round"/>';
+  }
+  if(wet){
+    for(var j=0;j<4;j++){
+      s += '<circle cx="'+n1(18+R()*64)+'" cy="'+n1(46+R()*26)+'" r="'+n1(1.3+R()*1.5)
+         + '" fill="'+C.waterHi+'" opacity="0.8"/>';
+    }
+  }
+  return s+'</svg>';
+}
+
+/* --- avion bombardier d'eau amphibie ---------------------------------- */
+function svgAvion(){
+  var body="#e0b13a", dark="#a97f22", nac="#8f6a1d", band="#d1442f", glass="#16202e";
+  var s = svgOpen(260,110);
+  s += '<path d="M34 52 L24 8 L50 6 L66 44 Z" fill="'+dark+'"/>';
+  s += '<path d="M12 10 L74 3 L76 13 L14 20 Z" fill="'+body+'"/>';
+  s += '<path d="M28 60 C28 44 46 36 84 34 L198 32 C228 32 248 40 252 52 C254 61 246 70 232 71 '
+     + 'L72 74 C46 74 28 70 28 60 Z" fill="'+body+'"/>';
+  s += '<path d="M31 63 L251 57 C250 66 243 71 232 71 L72 74 C50 74 36 70 31 63 Z" fill="'+band+'"/>';
+  s += '<path d="M92 25 L218 22 L219 31 L92 34 Z" fill="'+dark+'"/>';
+  s += '<rect x="108" y="13" width="52" height="19" rx="9" fill="'+nac+'"/>';
+  s += '<rect x="142" y="9" width="58" height="21" rx="10" fill="'+nac+'"/>';
+  s += '<path d="M214 40 L241 45 L244 53 L216 49 Z" fill="'+glass+'"/>';
+  s += '<path d="M218 42 L233 45 L234 48 L219 46 Z" fill="#4b6377"/>';
+  s += '<rect x="104" y="69" width="50" height="7" rx="3" fill="'+C.waterDeep+'"/>';
+  s += '<path d="M118 34 L112 25 M186 34 L192 26" stroke="'+dark+'" stroke-width="3.5" stroke-linecap="round"/>';
+  return s+'</svg>';
+}
+
+/* --- helicoptere bombardier d'eau, seau sous elingue ------------------ */
+function svgHelico(){
+  var body="#d5dbe3", dark="#98a3af", band="#d1442f", glass="#16202e", seau="#d1442f";
+  var s = svgOpen(240,160);
+  s += '<path d="M26 50 L18 16 L36 14 L42 48 Z" fill="'+dark+'"/>';
+  s += '<path d="M62 55 L18 49 L18 67 L62 71 Z" fill="'+body+'"/>';
+  s += '<circle cx="25" cy="25" r="4.5" fill="#5c6875"/>';
+  s += '<path d="M56 62 C56 42 76 30 108 30 C134 30 152 38 164 50 L176 62 '
+     + 'C182 70 176 80 164 80 L74 80 C62 80 56 72 56 62 Z" fill="'+body+'"/>';
+  s += '<path d="M58 70 L177 68 C181 76 175 80 164 80 L74 80 C64 80 59 76 58 70 Z" fill="'+band+'"/>';
+  s += '<path d="M130 36 C146 40 158 48 166 58 L138 58 C134 50 132 42 130 36 Z" fill="'+glass+'"/>';
+  s += '<path d="M133 39 C143 43 151 49 156 55 L142 55 C139 49 136 43 133 39 Z" fill="#4b6377"/>';
+  s += '<rect x="103" y="15" width="10" height="17" rx="3" fill="'+dark+'"/>';
+  s += '<path d="M62 89 L174 89" stroke="'+dark+'" stroke-width="4.5" stroke-linecap="round"/>';
+  s += '<path d="M82 80 L74 89 M146 80 L154 89" stroke="'+dark+'" stroke-width="4" stroke-linecap="round"/>';
+  s += '<path d="M111 89 L113 96 M121 89 L119 96" stroke="#7d8894" stroke-width="2"/>';
+  s += '<rect x="99" y="93" width="38" height="7" rx="2" fill="#9c2716"/>';
+  s += '<path d="M101 99 L135 99 L129 120 L107 120 Z" fill="'+seau+'"/>';
+  return s+'</svg>';
+}
+
+var CRAFT = {
+  avion : { svg:svgAvion,  w:260, h:110, ax:130, ay:56, tdx:-4, tdy:22, k:0.66,
+            props:[{x:68,y:-36,r:23},{x:34,y:-33,r:20}], rotor:null },
+  helico: { svg:svgHelico, w:240, h:160, ax:120, ay:58, tdx:-2, tdy:62, k:0.66,
+            props:null, rotor:{x:-12,y:-42,rx:98,ry:7}, tail:{x:-95,y:-33,r:16} }
+};
+
+/* rasterisation d'une chaine SVG en image */
+function raster(svg){
+  return new Promise(function(res,rej){
+    var im = new Image();
+    im.onload  = function(){ res(im); };
+    im.onerror = function(){ rej(new Error("SVG non rasterise")); };
+    im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+
+var RS = Math.min(window.devicePixelRatio || 1, 1.75);
+var A = { arbres:[], arbustes:[], herbes:[], avion:null, helico:null };
+
+function buildAssets(){
+  var kinds = ["pin","pin","chene","cypres","pin","chene","pin","cypres","chene","pin"];
+  var jobs = [];
+  kinds.forEach(function(k,i){
+    var o = {};
+    A.arbres.push(o);
+    jobs.push(raster(svgArbre(k,1100+i*37,false)).then(function(im){ o.dry=im; }));
+    jobs.push(raster(svgArbre(k,1100+i*37,true )).then(function(im){ o.wet=im; }));
+  });
+  ["maquis","ciste","maquis","ciste","maquis","ciste"].forEach(function(k,i){
+    var o = {};
+    A.arbustes.push(o);
+    jobs.push(raster(svgArbuste(k,2200+i*53,false)).then(function(im){ o.dry=im; }));
+    jobs.push(raster(svgArbuste(k,2200+i*53,true )).then(function(im){ o.wet=im; }));
+  });
+  for(var i=0;i<6;i++){
+    (function(o,sd){
+      A.herbes.push(o);
+      jobs.push(raster(svgHerbe(sd,false)).then(function(im){ o.dry=im; }));
+      jobs.push(raster(svgHerbe(sd,true )).then(function(im){ o.wet=im; }));
+    })({}, 3300+i*71);
+  }
+  jobs.push(raster(svgAvion()).then(function(im){ A.avion=im; }));
+  jobs.push(raster(svgHelico()).then(function(im){ A.helico=im; }));
+  return Promise.all(jobs);
+}
+
+/* =========================  COMPOSITION DE LA FORET  ================== */
+function buildForet(seed){
+  var R = rng(seed), i, o;
+  var fond=[], avant=[], arbustes=[], herbes=[], collines=[];
+
+  for(i=0;i<7;i++) collines.push({ x:-60+i*200+R()*90, w:250+R()*180, h:34+R()*30 });
+
+  for(i=0;i<34;i++){
+    o = { t:(R()*A.arbres.length)|0, x:-50+R()*(W+100), y:446+R()*12,
+          s:0.54+R()*0.11, flip:R()<0.5 };
+    fond.push(o);
+  }
+  for(i=0;i<24;i++){
+    o = { t:(R()*A.arbres.length)|0, x:-60+R()*(W+120), y:478+R()*14,
+          s:0.70+R()*0.19, flip:R()<0.5 };
+    avant.push(o);
+  }
+  for(i=0;i<52;i++){
+    o = { t:(R()*A.arbustes.length)|0, x:-40+R()*(W+80), y:480+R()*22,
+          s:0.52+R()*0.36, flip:R()<0.5 };
+    arbustes.push(o);
+  }
+  for(i=0;i<130;i++){
+    o = { t:(R()*A.herbes.length)|0, x:-30+R()*(W+60), y:486+R()*24,
+          s:0.48+R()*0.36, flip:R()<0.5 };
+    herbes.push(o);
+  }
+  avant.sort(function(a,b){ return a.y-b.y; });
+  arbustes.sort(function(a,b){ return a.y-b.y; });
+  return { collines:collines, fond:fond, avant:avant, arbustes:arbustes, herbes:herbes };
+}
+
+function poseArbre(ctx, im, o){
+  var w = 220*o.s, h = 320*o.s;
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if(o.flip) ctx.scale(-1,1);
+  ctx.drawImage(im, -w/2, -h, w, h);
+  ctx.restore();
+}
+function pose(ctx, im, o, nw, nh){
+  var w = nw*o.s, h = nh*o.s;
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if(o.flip) ctx.scale(-1,1);
+  ctx.drawImage(im, -w/2, -h, w, h);
+  ctx.restore();
+}
+
+function newLayer(alpha){
+  var c = document.createElement("canvas");
+  c.width = Math.round(W*RS); c.height = Math.round(H*RS);
+  var x = c.getContext("2d", { alpha: alpha!==false });
+  x.setTransform(RS,0,0,RS,0,0);
+  return { c:c, x:x };
+}
+
+var SKY = [[38,140,"#121c29"],[140,196,"#16212e"],[196,232,"#1b2734"],[232,252,"#232c37"]];
+
+function paintFond(F){
+  var L = newLayer(false), x = L.x, i;
+  x.fillStyle = C.bg; x.fillRect(0,0,W,H);
+  SKY.forEach(function(b){ x.fillStyle = b[2]; x.fillRect(0,b[0],W,b[1]-b[0]); });
+
+  x.fillStyle = C.hillFar;
+  F.collines.forEach(function(h){
+    x.beginPath();
+    x.moveTo(h.x, 258);
+    x.quadraticCurveTo(h.x+h.w*0.5, 258-h.h, h.x+h.w, 258);
+    x.closePath(); x.fill();
+  });
+
+  x.fillStyle = "#1c2a20"; x.fillRect(0,450,W,H-450);
+  F.fond.forEach(function(o){ poseArbre(x, A.arbres[o.t].dry, o); });
+
+  x.fillStyle = C.haze; x.globalAlpha = 0.44; x.fillRect(0,0,W,512); x.globalAlpha = 1;
+
+  x.fillStyle = C.soil;    x.fillRect(0,Y_GROUND,W,Y_SOIL_BOT-Y_GROUND);
+  x.fillStyle = C.soilTop; x.fillRect(0,Y_GROUND,W,3);
+  x.fillStyle = C.bg;      x.fillRect(0,Y_SOIL_BOT,W,H-Y_SOIL_BOT);
+
+  F.avant.forEach(function(o){ poseArbre(x, A.arbres[o.t].dry, o); });
+
+  x.fillStyle = C.head; x.fillRect(0,0,W,HEAD_H);
+  x.fillStyle = C.line; x.fillRect(0,HEAD_H-1,W,1);
+  return L;
+}
+
+function paintAvant(F){
+  var L = newLayer(true), x = L.x;
+  F.arbustes.forEach(function(o){ pose(x, A.arbustes[o.t].dry, o, 170, 130); });
+  F.herbes.forEach(function(o){ pose(x, A.herbes[o.t].dry, o, 100, 80); });
+  return L;
+}
+
+/* ==========================  ETAT ET SIMULATION  ====================== */
+var DEF = { vol:12000, larg:20, haut:40, vav:200, vhe:100, dur:5, spd:1 };
+var P   = { vol:12000, larg:20, haut:40, vav:200, vhe:100, dur:5, spd:1 };
+var PXM = 3.6;
+var LEAD = 1.0, FDT = 1/60, TAU = 0.10;
+
+var SCEN = [
+  { n:1, craft:"avion",  titre:"Avion",
+    sous:"vitesse élevée, ligne longue",
+    vk:function(){ return P.vav; }, tk:function(){ return P.dur; } },
+  { n:2, craft:"helico", titre:"Hélicoptère, même durée d'ouverture",
+    sous:"même débit, mais deux fois moins de distance",
+    vk:function(){ return P.vhe; }, tk:function(){ return P.dur; } },
+  { n:3, craft:"helico", titre:"Hélicoptère, même longueur de ligne",
+    sous:"durée doublée, donc débit divisé par deux",
+    vk:function(){ return P.vhe; }, tk:function(){ return P.dur*2; } }
+];
+
+function derive(sc){
+  var v = sc.vk(), t = sc.tk(), vms = v/3.6;
+  var L = vms*t, Q = P.vol/t, q = P.vol/L;
+  var pen = Math.pow(Q/QREF,0.75) * Math.pow(HREF/P.haut,0.5);
+  return { v:v, t:t, vms:vms, L:L, Q:Q, q:q, pen:pen,
+           fc: cl(0.05 + 0.80*pen*pen, 0.03, 0.93),
+           clInc: P.vol/(L*P.larg)/CLU };
+}
+function majEchelle(){
+  var m = 1;
+  SCEN.forEach(function(s){ m = Math.max(m, derive(s).L); });
+  PXM = (X1-X0)/m;
+}
+function yLache(){ return cl(Y_CANOPY_TOP - 28 - P.haut*1.5, 152, 214); }
+
+function env(u){ if(u<0||u>1) return 0; if(u<TAU) return u/TAU; if(u>1-TAU) return (1-u)/TAU; return 1; }
+function cumF(u){
+  if(u<=0) return 0; if(u>=1) return 1;
+  var a;
+  if(u<TAU) a = u*u/(2*TAU);
+  else if(u<=1-TAU) a = TAU/2 + (u-TAU);
+  else { var z = u-(1-TAU); a = TAU/2 + (1-2*TAU) + (z - z*z/(2*TAU)); }
+  return a/(1-TAU);
+}
+
+function newSim(sc){
+  var d = derive(sc), cr = CRAFT[sc.craft];
+  var S = {
+    sc:sc, d:d, cr:cr, vpx:d.vms*PXM, yR:yLache(),
+    step:0, t:0, acc:0, emis:0, m:P.vol/NPART,
+    tFrag: cl(0.30*Math.sqrt(d.pen), 0.11, 0.52),
+    w0:    cl(13*Math.sqrt(d.Q/QREF), 3.5, 34),
+    parts:[], spl:[], gl:[],
+    dep:{ canopy:new Float64Array(NB), shrub:new Float64Array(NB), ground:new Float64Array(NB) },
+    tot:{ canopy:0, shrub:0, ground:0, perdu:0 },
+    R: rng(4242 + sc.n*911),
+    tOpen: LEAD, tClose: LEAD + d.t, fin: LEAD + d.t + 3.6,
+    fini:false, joue:false
+  };
+  S.nStep = Math.ceil(S.fin/FDT);
+  return S;
+}
+function tankX(S,t){ return X0 + S.vpx*(t - LEAD); }
+function acX(S,t){ return tankX(S,t) - S.cr.tdx*S.cr.k; }
+function acY(S){ return S.yR - S.cr.tdy*S.cr.k; }
+function depose(S,k,x,m){ S.dep[k][cl(Math.floor(x/BW),0,NB-1)] += m; S.tot[k] += m; }
+function clStrate(S,k){ return S.tot[k]/(S.d.L*P.larg)/CLU; }
+
+function pas(S, vis){
+  var dt = FDT, R = S.R, i, p;
+  S.step++; S.t = S.step*FDT;
+
+  /* emission au point de rupture de la colonne */
+  if(S.t > S.tOpen && S.emis < NPART){
+    var u = cl((S.t - S.tOpen)/S.d.t, 0, 1);
+    var cible = Math.floor(cumF(u)*NPART);
+    var a = S.tFrag;
+    var bx = tankX(S, S.t - a), by = S.yR + 55*a + 0.5*G*a*a;
+    var hw = S.w0*env(u);
+    while(S.emis < cible){
+      S.emis++;
+      var gros = R() < S.d.fc;
+      S.parts.push({
+        x: bx + (R()-0.5)*hw*2.1,
+        y: by + (R()-0.5)*9,
+        vx: S.vpx*0.92 + (R()-0.5)*26,
+        vy: 55 + G*a + R()*55,
+        r: gros ? (3.0 + R()*3.4) : (1.1 + R()*1.5),
+        fin: !gros, m: S.m, dep: R()<0.32 ? 0 : 1,
+        st: 0, cap: null, stop: 0,
+        life: gros ? 99 : (1.3 + R()*1.4), al: 1
+      });
+    }
+  }
+
+  /* deplacement et interception */
+  for(i=S.parts.length-1;i>=0;i--){
+    p = S.parts[i];
+    p.vy += G*dt;
+    if(p.fin){
+      p.vx += (-p.vx*3.2 + 16)*dt;
+      p.vy += (-p.vy*3.4 - 42)*dt;
+      p.life -= dt;
+      p.al = cl(p.life/0.55, 0, 1);
+      var ev = 0.62*dt;                 /* evaporation des fines en vol */
+      S.tot.perdu += p.m*ev; p.m *= (1-ev);
+    } else {
+      p.vx += -p.vx*0.45*dt;
+      p.vy += -p.vy*0.22*dt;
+    }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+
+    if(p.st===0 && p.y >= Y_CANOPY_TOP){
+      p.st = 1;
+      if(R() < (p.fin?PASS.canopy.fin:PASS.canopy.gros)){
+        depose(S,"canopy",p.x,p.m*SHED.canopy); p.m *= (1-SHED.canopy);
+      } else { p.cap = "canopy"; p.stop = Y_CANOPY_TOP + R()*(Y_CANOPY_BOT-Y_CANOPY_TOP); }
+    }
+    if(p.st===1 && !p.cap && p.y >= Y_SHRUB_TOP){
+      p.st = 2;
+      if(R() < (p.fin?PASS.shrub.fin:PASS.shrub.gros)){
+        depose(S,"shrub",p.x,p.m*SHED.shrub); p.m *= (1-SHED.shrub);
+      } else { p.cap = "shrub"; p.stop = Y_SHRUB_TOP + R()*(Y_SHRUB_BOT-Y_SHRUB_TOP); }
+    }
+    if(p.cap && p.y >= p.stop){
+      depose(S,p.cap,p.x,p.m);
+      if(vis) S.gl.push({ x:p.x, y:p.stop, r:Math.max(1.3,p.r*0.66), t:0 });
+      S.parts.splice(i,1); continue;
+    }
+    if(p.y >= Y_GROUND){
+      depose(S,"ground",p.x,p.m);
+      if(vis) S.spl.push({ x:p.x, y:Y_GROUND, t:0, r:p.r });
+      S.parts.splice(i,1); continue;
+    }
+    if((p.fin && p.life<=0) || p.y<-60 || p.x<-260 || p.x>W+260){
+      S.tot.perdu += p.m; S.parts.splice(i,1); continue;
+    }
+  }
+
+  if(vis){
+    for(i=S.spl.length-1;i>=0;i--){ S.spl[i].t += dt; if(S.spl[i].t>0.42) S.spl.splice(i,1); }
+    for(i=S.gl.length-1;i>=0;i--){ S.gl[i].t += dt; if(S.gl[i].t>2.0) S.gl.splice(i,1); }
+  }
+  if(S.step >= S.nStep) S.fini = true;
+}
+
+function simuleTout(S){ while(!S.fini) pas(S,false); return S; }
+
+/* =============================  RENDU  ================================ */
+function txt(ctx,s,x,y,size,color,weight,align){
+  ctx.font = (weight||400)+" "+size+'px system-ui,"Segoe UI",Roboto,Arial,sans-serif';
+  ctx.fillStyle = color; ctx.textAlign = align||"left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(s,x,y);
+}
+function rrect(ctx,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function clLocal(S,k,i){ return S.dep[k][cl(i,0,NB-1)]/((BW/PXM)*P.larg)/CLU; }
+function clLisse(S,k,i){ return (clLocal(S,k,i-1)+2*clLocal(S,k,i)+clLocal(S,k,i+1))/4; }
+function humid(S,k,x,ref){ return cl(clLisse(S,k,Math.floor(x/BW))/ref, 0, 1); }
+
+function dessineParticules(ctx,S,couche){
+  var i,p,n=S.parts.length;
+  ctx.fillStyle = C.waterFine; ctx.globalAlpha = 0.7; ctx.beginPath();
+  for(i=0;i<n;i++){ p=S.parts[i];
+    if(p.dep!==couche || !p.fin || p.al<=0.02) continue;
+    ctx.moveTo(p.x+p.r,p.y); ctx.arc(p.x,p.y,p.r,0,6.2832);
+  }
+  ctx.fill(); ctx.globalAlpha = 1;
+
+  ctx.fillStyle = C.water; ctx.beginPath();
+  for(i=0;i<n;i++){ p=S.parts[i];
+    if(p.dep!==couche || p.fin) continue;
+    var st = cl(1 + Math.abs(p.vy)/1100, 1, 2.4);
+    ctx.moveTo(p.x+p.r*0.86,p.y);
+    ctx.ellipse(p.x,p.y,p.r*0.86,p.r*st,0,0,6.2832);
+  }
+  ctx.fill();
+
+  ctx.fillStyle = C.waterHi; ctx.beginPath();
+  for(i=0;i<n;i++){ p=S.parts[i];
+    if(p.dep!==couche || p.fin || p.r<4.4) continue;
+    ctx.moveTo(p.x-p.r*0.1,p.y-p.r*0.35); ctx.arc(p.x-p.r*0.3,p.y-p.r*0.4,p.r*0.3,0,6.2832);
+  }
+  ctx.fill();
+}
+
+function dessineColonne(ctx,S){
+  var uEnd = (S.t - S.tOpen)/S.d.t;
+  if(uEnd < -0.02 || uEnd > 1 + S.tFrag/S.d.t + 0.05) return;
+  var NS = 18, Lp=[], Rp=[], i;
+  for(i=0;i<=NS;i++){
+    var a  = (i/NS)*S.tFrag;
+    var ua = (S.t - a - S.tOpen)/S.d.t;
+    var e  = env(ua);
+    if(e <= 0.001) continue;
+    var px = tankX(S, S.t-a);
+    var py = S.yR + 55*a + 0.5*G*a*a;
+    var t01 = i/NS;
+    var wob = 1 + 0.15*Math.sin(a*47 + S.t*8);
+    var hw = S.w0*e*wob*(1 - 0.44*t01*t01);
+    Lp.push([px-hw,py]); Rp.push([px+hw,py]);
+  }
+  if(Lp.length < 2) return;
+  function trace(k){
+    ctx.beginPath();
+    var mx = (Lp[0][0]+Rp[0][0])/2;
+    ctx.moveTo(mx+(Lp[0][0]-mx)*k, Lp[0][1]);
+    for(var j=1;j<Lp.length;j++){ var c=(Lp[j][0]+Rp[j][0])/2; ctx.lineTo(c+(Lp[j][0]-c)*k, Lp[j][1]); }
+    for(var j2=Rp.length-1;j2>=0;j2--){ var c2=(Lp[j2][0]+Rp[j2][0])/2; ctx.lineTo(c2+(Rp[j2][0]-c2)*k, Rp[j2][1]); }
+    ctx.closePath();
+  }
+  ctx.fillStyle = C.waterDeep; trace(1.0); ctx.fill();
+  ctx.fillStyle = C.water;     trace(0.66); ctx.fill();
+  ctx.fillStyle = C.waterHi;   ctx.globalAlpha = 0.75; trace(0.24); ctx.fill(); ctx.globalAlpha = 1;
+}
+
+function dessineAppareil(ctx,S){
+  var t = S.t, x = acX(S,t), y = acY(S), cr = S.cr;
+  var al = (t > S.tClose+1.6) ? cl(1-(t-S.tClose-1.6)/1.1, 0, 1) : 1;
+  if(al <= 0.01) return;
+  var k = cr.k;
+  if(x < -cr.w*k || x > W+cr.w*k) return;
+  ctx.save(); ctx.globalAlpha = al;
+  ctx.drawImage(cr===CRAFT.avion ? A.avion : A.helico,
+                x-cr.ax*k, y-cr.ay*k, cr.w*k, cr.h*k);
+  var ang = t*46;
+  ctx.lineCap = "round";
+  if(cr.props){
+    cr.props.forEach(function(pr,n){
+      var cx = x+pr.x*k, cy = y+pr.y*k, rr = pr.r*k;
+      ctx.strokeStyle = "rgba(226,232,240,0.22)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx,cy,rr*0.30,rr,0,0,6.2832); ctx.stroke();
+      ctx.strokeStyle = "rgba(226,232,240,0.62)"; ctx.lineWidth = 2.2;
+      for(var b=0;b<2;b++){
+        var a2 = ang + n*1.1 + b*1.5708;
+        ctx.beginPath();
+        ctx.moveTo(cx - rr*0.30*Math.cos(a2), cy - rr*Math.sin(a2));
+        ctx.lineTo(cx + rr*0.30*Math.cos(a2), cy + rr*Math.sin(a2));
+        ctx.stroke();
+      }
+    });
+  }
+  if(cr.rotor){
+    var hx = x+cr.rotor.x*k, hy = y+cr.rotor.y*k;
+    var rx = cr.rotor.rx*k, ry = cr.rotor.ry*k;
+    ctx.strokeStyle = "rgba(226,232,240,0.20)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(hx,hy,rx,ry,0,0,6.2832); ctx.stroke();
+    ctx.strokeStyle = "rgba(226,232,240,0.70)"; ctx.lineWidth = 2.6;
+    for(var b2=0;b2<2;b2++){
+      var a3 = ang*0.55 + b2*1.5708;
+      ctx.beginPath();
+      ctx.moveTo(hx - rx*Math.cos(a3), hy - ry*Math.sin(a3));
+      ctx.lineTo(hx + rx*Math.cos(a3), hy + ry*Math.sin(a3));
+      ctx.stroke();
+    }
+    var tx = x+cr.tail.x*k, ty = y+cr.tail.y*k;
+    ctx.strokeStyle = "rgba(226,232,240,0.30)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tx,ty,cr.tail.r*k,0,6.2832); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function dessineImpacts(ctx,S){
+  var i,s;
+  ctx.strokeStyle = C.waterHi; ctx.lineWidth = 1.6;
+  for(i=0;i<S.spl.length;i++){
+    s = S.spl[i];
+    var k = s.t/0.42, rr = 3 + k*13;
+    ctx.globalAlpha = (1-k)*0.85;
+    ctx.beginPath(); ctx.ellipse(s.x, s.y+1, rr, rr*0.34, 0, Math.PI, 0); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = C.waterHi;
+  ctx.beginPath();
+  for(i=0;i<S.gl.length;i++){
+    var g = S.gl[i], a = cl(1-(g.t-1.1)/0.9, 0, 1);
+    if(a<=0.02) continue;
+    ctx.globalAlpha = a*0.9;
+    ctx.moveTo(g.x+g.r,g.y); ctx.arc(g.x,g.y,g.r,0,6.2832);
+  }
+  ctx.fill(); ctx.globalAlpha = 1;
+}
+
+function dessineSolMouille(ctx,S){
+  var i, hh = Y_SOIL_BOT-Y_GROUND;
+  for(i=0;i<NB;i++){
+    var w = cl(clLisse(S,"ground",i)/3, 0, 1);
+    if(w < 0.02) continue;
+    ctx.globalAlpha = w*0.92;
+    ctx.fillStyle = C.soilWet; ctx.fillRect(i*BW-0.5, Y_GROUND, BW+1, hh);
+    ctx.globalAlpha = w*0.5;
+    ctx.fillStyle = C.waterDeep; ctx.fillRect(i*BW-0.5, Y_GROUND, BW+1, 3);
+    if(w > 0.5){
+      ctx.globalAlpha = (w-0.5)*1.5;
+      ctx.fillStyle = C.water;
+      ctx.beginPath();
+      ctx.ellipse(i*BW+BW*0.5, Y_GROUND+5, BW*0.46, 2.4, 0, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function dessineEntete(ctx,S){
+  var d = S.d;
+  ctx.fillStyle = C.water; rrect(ctx,12,8,26,22,4); ctx.fill();
+  txt(ctx, String(S.sc.n), 25, 25, 15, "#04202f", 700, "center");
+  txt(ctx, S.sc.titre, 48, 25, 16, C.ink, 700);
+  ctx.font = '700 16px system-ui,"Segoe UI",Roboto,Arial,sans-serif';
+  var wt = ctx.measureText(S.sc.titre).width;
+  txt(ctx, S.sc.sous, 48+wt+14, 25, 14, C.ink3, 400);
+  txt(ctx, fmil(P.vol)+" L  \u00b7  "+f0(d.v)+" km/h  \u00b7  ouverture "+f1(d.t)
+        +" s  \u00b7  débit "+fmil(d.Q)+" L/s  \u00b7  ligne "+f0(d.L)+" m"
+        +"  \u00b7  CL appliqué "+fcl(d.clInc),
+      1188, 25, 13.5, C.ink2, 600, "right");
+}
+
+function dessineGouttiere(ctx,S){
+  ctx.fillStyle = "rgba(15,23,42,0.76)"; ctx.fillRect(0,HEAD_H,GUT,Y_SOIL_BOT-HEAD_H);
+  ctx.fillStyle = C.line; ctx.fillRect(GUT-1,HEAD_H,1,Y_SOIL_BOT-HEAD_H);
+  txt(ctx,"COMBUSTIBLE",12,HEAD_H+24,13,C.ink3,700);
+  txt(ctx,"DOMINANT ET CL",12,HEAD_H+40,13,C.ink3,700);
+  txt(ctx,"À APPLIQUER",12,HEAD_H+56,13,C.ink3,700);
+
+  var lignes = [Y_CANOPY_TOP, Y_SHRUB_TOP, Y_GROUND];
+  ctx.save(); ctx.setLineDash([4,5]); ctx.strokeStyle = "rgba(148,163,184,0.42)"; ctx.lineWidth = 1;
+  lignes.forEach(function(y){
+    ctx.beginPath(); ctx.moveTo(6,y+0.5); ctx.lineTo(GUT+26,y+0.5); ctx.stroke();
+  });
+  ctx.restore();
+
+  var blocs = [ {s:STRATES[0], y:Y_CANOPY_TOP+52}, {s:STRATES[1], y:Y_SHRUB_TOP+46}, {s:STRATES[2], y:Y_GROUND-42} ];
+  blocs.forEach(function(b){
+    ctx.fillStyle = b.s.col; ctx.fillRect(12, b.y-9, 9, 9);
+    txt(ctx, b.s.nom.split(",")[0], 27, b.y, 14, C.ink, 600);
+    var lab = b.s.clMin===b.s.clMax ? ("CL "+b.s.clMin) : ("CL "+b.s.clMin+" à "+b.s.clMax);
+    txt(ctx, lab, 27, b.y+17, 13.5, C.water, 700);
+    txt(ctx, f1(b.s.clMin*CLU)+(b.s.clMin===b.s.clMax?"":" à "+f1(b.s.clMax*CLU))+" L/m²",
+        27, b.y+33, 13, C.ink3, 400);
+  });
+}
+
+function dessineReperes(ctx,S){
+  var xe = X0 + S.d.L*PXM;
+  ctx.save();
+  ctx.setLineDash([5,6]); ctx.lineWidth = 1.4; ctx.strokeStyle = "rgba(56,189,248,0.55)";
+  [X0, xe].forEach(function(x){
+    ctx.beginPath(); ctx.moveTo(x+0.5,HEAD_H+4); ctx.lineTo(x+0.5,Y_SOIL_BOT); ctx.stroke();
+  });
+  ctx.restore();
+  ctx.fillStyle = "rgba(56,189,248,0.16)";
+  ctx.fillRect(X0, HEAD_H+4, xe-X0, 3);
+  var mid = (X0+xe)/2;
+  txt(ctx, "ligne larguée  "+f0(S.d.L)+" m", mid, HEAD_H+26, 13.5, C.water, 700, "center");
+  txt(ctx, "hauteur de largage "+f0(P.haut)+" m", X0+8, S.yR-10, 13, C.ink3, 600);
+  txt(ctx, "CL appliqué sur la zone : "+fcl(S.d.clInc),
+      Math.min(xe,X1)-8, S.yR-10, 13.5, C.water, 700, "right");
+  ctx.save();
+  ctx.setLineDash([3,4]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(148,163,184,0.40)";
+  ctx.beginPath(); ctx.moveTo(X0+4, S.yR+0.5); ctx.lineTo(Math.min(xe,X1)-4, S.yR+0.5); ctx.stroke();
+  ctx.restore();
+}
+
+var CLMAX_SOL = 8;   /* echelle de la bande de concentration au sol */
+var CLMAX_RES = 12;  /* echelle des barres du bloc resultats, doit contenir CL 10,5 */
+function teinte(v){ return v >= 2 ? C.ok : (v >= 1.4 ? C.warn : C.bad); }
+
+function dessineBande(ctx,S){
+  var base = STRIP_TOP+62, hm = 36, i;
+  ctx.fillStyle = C.line; ctx.fillRect(0,STRIP_TOP,W,1);
+  txt(ctx,"Concentration déposée au sol, le long de la ligne",12,STRIP_TOP+20,13.5,C.ink2,600);
+  txt(ctx,"seuil retenu au sol : CL 2, soit 0,82 L/m²",1188,STRIP_TOP+20,13,C.ink3,400,"right");
+  ctx.fillStyle = "rgba(148,163,184,0.10)"; ctx.fillRect(X0,base-hm,X1-X0,hm);
+  for(i=0;i<NB;i++){
+    var v = clLisse(S,"ground",i);
+    if(v <= 0.02) continue;
+    var h = cl(v/CLMAX_SOL,0,1)*hm;
+    ctx.fillStyle = teinte(v);
+    ctx.fillRect(i*BW+0.4, base-h, BW-0.8, h);
+  }
+  ctx.save();
+  ctx.setLineDash([5,5]); ctx.strokeStyle = C.ok; ctx.lineWidth = 1.4;
+  var yt = base - (2/CLMAX_SOL)*hm;
+  ctx.beginPath(); ctx.moveTo(X0-4,yt+0.5); ctx.lineTo(X1+4,yt+0.5); ctx.stroke();
+  ctx.restore();
+  txt(ctx,"CL 2",X0-10,yt+5,13,C.ok,700,"right");
+  txt(ctx,"CL "+CLMAX_SOL,X0-10,base-hm+11,13,C.ink3,400,"right");
+
+  ctx.fillStyle = C.line; ctx.fillRect(X0,base+2,X1-X0,1);
+  var Lmax = (X1-X0)/PXM, d;
+  for(d=0; d<=Lmax+0.01; d+=25){
+    var x = X0 + d*PXM, gros = (Math.round(d)%100===0);
+    ctx.fillStyle = gros ? C.ink3 : C.line;
+    ctx.fillRect(x, base+2, 1, gros?8:4);
+    if(gros) txt(ctx, d===0 ? "0" : (f0(d)+" m"), x, base+24, 13, C.ink3, 400, "center");
+  }
+  ctx.fillStyle = C.line; ctx.fillRect(0,STRIP_BOT,W,1);
+}
+
+function dessineResultats(ctx,S){
+  var part = P.vol > 0 ? 1/P.vol : 0;
+  var app  = S.d.clInc;                    /* CL appliqué : constante du largage */
+  var BX = 360, BL = 300;
+  function bx(v){ return BX + cl(v/CLMAX_RES,0,1)*BL; }
+  function barre(y,v,coul){
+    ctx.fillStyle = "rgba(148,163,184,0.16)"; rrect(ctx,BX,y-12,BL,14,3); ctx.fill();
+    var w = bx(v)-BX;
+    if(w > 1){ ctx.fillStyle = coul; rrect(ctx,BX,y-12,w,14,3); ctx.fill(); }
+  }
+
+  txt(ctx,"Le largage en chiffres",12,RES_TOP+24,15,C.ink,700);
+  txt(ctx,"CL appliqué = débit / (vitesse sol × largeur de nappe)",300,RES_TOP+24,13.5,C.ink3,400);
+
+  /* trait vert : seuil retenu au sol, aligné sur la prescription herbe */
+  ctx.save();
+  ctx.setLineDash([4,4]); ctx.lineWidth = 1.4; ctx.strokeStyle = "rgba(74,222,128,0.45)";
+  ctx.beginPath(); ctx.moveTo(bx(2)+0.5, RES_TOP+50); ctx.lineTo(bx(2)+0.5, RES_TOP+200); ctx.stroke();
+  ctx.restore();
+
+  /* les seuils de prescription portent sur le CL appliqué, pas sur une strate */
+  [[2,"herbe"],[4,"maquis"],[8,"futaie"]].forEach(function(o){
+    txt(ctx, o[1], bx(o[0]), RES_TOP+44, 13, C.ink3, 400, "center");
+  });
+
+  var y0 = RES_TOP+62;
+  txt(ctx,"CL appliqué sur la zone",12,y0,14.5,C.ink,700);
+  txt(ctx,"avant interception",205,y0,13.5,C.ink3,400);
+  barre(y0, app, C.water);
+  [2,4,8].forEach(function(v){ ctx.fillStyle = C.ink; ctx.fillRect(bx(v)-1,y0-15,2,20); });
+  txt(ctx, fcl(app)+" CL", 674, y0, 14.5, C.ink, 700);
+  txt(ctx, fL(app*CLU)+" L/m²", 742, y0, 13.5, C.ink3, 400);
+  txt(ctx, "100 % de la charge", 830, y0, 13.5, C.ink2, 400);
+
+  ctx.fillStyle = C.line; ctx.fillRect(12, RES_TOP+78, 918, 1);
+  txt(ctx,"Où va cette charge",12,RES_TOP+98,14,C.ink2,600);
+  txt(ctx,"les quatre lignes se somment au CL appliqué",205,RES_TOP+98,13,C.ink3,400);
+  txt(ctx,"le trait vert marque le seuil de CL 2 retenu au sol",560,RES_TOP+98,13,C.ok,400);
+
+  var ys = [RES_TOP+122, RES_TOP+146, RES_TOP+170];
+  var libs = ["capté par les cimes","capté par le sous-bois","arrivé au sol"];
+  STRATES.forEach(function(st,k){
+    var y = ys[k], v = clStrate(S,st.key);
+    ctx.fillStyle = st.col; ctx.fillRect(12,y-10,10,10);
+    txt(ctx, st.nom, 32, y, 14.5, C.ink, 600);
+    txt(ctx, libs[k], 205, y, 13.5, C.ink3, 400);
+    barre(y, v, st.col);
+    if(st.key === "ground"){ ctx.fillStyle = C.ok; ctx.fillRect(bx(2)-1,y-15,2,20); }
+    txt(ctx, fcl(v)+" CL", 674, y, 14.5, C.ink, 700);
+    txt(ctx, fL(v*CLU)+" L/m²", 742, y, 13.5, C.ink3, 400);
+    txt(ctx, f0(S.tot[st.key]*part*100)+" % de la charge", 830, y, 13.5, C.ink2, 400);
+  });
+
+  var yp = RES_TOP+194, vp = app*S.tot.perdu*part;
+  ctx.fillStyle = C.ink3; ctx.fillRect(12,yp-10,10,10);
+  txt(ctx, "Dérive et évaporation", 32, yp, 14.5, C.ink2, 600);
+  txt(ctx, "jamais déposé", 205, yp, 13.5, C.ink3, 400);
+  barre(yp, vp, C.ink3);
+  txt(ctx, fcl(vp)+" CL", 674, yp, 14.5, C.ink2, 700);
+  txt(ctx, fL(vp*CLU)+" L/m²", 742, yp, 13.5, C.ink3, 400);
+  txt(ctx, f0(S.tot.perdu*part*100)+" % de la charge", 830, yp, 13.5, C.ink2, 400);
+
+  var sol = clStrate(S,"ground"), ok = sol >= 2, enCours = !S.fini;
+  var coul = enCours ? C.ink3 : (ok ? C.ok : C.bad);
+  ctx.strokeStyle = enCours ? C.line : coul; ctx.lineWidth = 1.5;
+  ctx.fillStyle = enCours ? "rgba(148,163,184,0.06)"
+                          : (ok ? "rgba(74,222,128,0.09)" : "rgba(248,113,113,0.09)");
+  rrect(ctx,960,RES_TOP+16,228,144,6); ctx.fill(); ctx.stroke();
+  txt(ctx, enCours ? "LARGAGE EN COURS" : (ok ? "LIGNE TENUE" : "LIGNE INSUFFISANTE"),
+      976, RES_TOP+42, 15, enCours ? C.ink2 : coul, 700);
+  txt(ctx, "appliqué en l'air",   976, RES_TOP+70, 13.5, C.ink3, 400);
+  txt(ctx, "CL "+fcl(app),       1172, RES_TOP+70, 13.5, C.ink,  700, "right");
+  txt(ctx, "arrivé au sol",       976, RES_TOP+90, 13.5, C.ink3, 400);
+  txt(ctx, "CL "+fcl(sol),       1172, RES_TOP+90, 13.5, coul,   700, "right");
+  txt(ctx, "seuil retenu au sol", 976, RES_TOP+110, 13.5, C.ink3, 400);
+  txt(ctx, "CL 2",               1172, RES_TOP+110, 13.5, C.ink2, 700, "right");
+  txt(ctx, "sur une ligne de "+f0(S.d.L)+" m", 976, RES_TOP+136, 13.5, C.ink2, 400);
+}
+
+function dessine(V){
+  var S = V.S, ctx = V.ctx, F = V.F, i;
+  ctx.drawImage(V.fond.c, 0, 0, W, H);
+  dessineSolMouille(ctx,S);
+  for(i=0;i<F.fond.length;i++){
+    var w1 = humid(S,"canopy",F.fond[i].x,3);
+    if(w1 > 0.04){ ctx.globalAlpha = w1*0.5; poseArbre(ctx, A.arbres[F.fond[i].t].wet, F.fond[i]); }
+  }
+  for(i=0;i<F.avant.length;i++){
+    var w2 = humid(S,"canopy",F.avant[i].x,3);
+    if(w2 > 0.04){ ctx.globalAlpha = w2*0.92; poseArbre(ctx, A.arbres[F.avant[i].t].wet, F.avant[i]); }
+  }
+  ctx.globalAlpha = 1;
+  dessineParticules(ctx,S,0);
+  ctx.drawImage(V.avant.c, 0, 0, W, H);
+  for(i=0;i<F.arbustes.length;i++){
+    var w3 = humid(S,"shrub",F.arbustes[i].x,2);
+    if(w3 > 0.04){ ctx.globalAlpha = w3*0.92; pose(ctx, A.arbustes[F.arbustes[i].t].wet, F.arbustes[i],170,130); }
+  }
+  for(i=0;i<F.herbes.length;i++){
+    var w4 = humid(S,"ground",F.herbes[i].x,3);
+    if(w4 > 0.04){ ctx.globalAlpha = w4*0.92; pose(ctx, A.herbes[F.herbes[i].t].wet, F.herbes[i],100,80); }
+  }
+  ctx.globalAlpha = 1;
+  dessineParticules(ctx,S,1);
+  dessineImpacts(ctx,S);
+  dessineGouttiere(ctx,S);
+  dessineReperes(ctx,S);
+  dessineColonne(ctx,S);
+  dessineAppareil(ctx,S);
+  dessineEntete(ctx,S);
+  dessineBande(ctx,S);
+  dessineResultats(ctx,S);
+  V.sale = false;
+}
+
+/* ==============================  BILAN  =============================== */
+function dessineBilan(ctx, sims){
+  var Lmax = 1, k;
+  sims.forEach(function(S){ Lmax = Math.max(Lmax, S.d.L); });
+  ctx.fillStyle = C.bg;   ctx.fillRect(0,0,W,330);
+  ctx.fillStyle = C.head; ctx.fillRect(0,0,W,HEAD_H);
+  ctx.fillStyle = C.line; ctx.fillRect(0,HEAD_H-1,W,1);
+  txt(ctx,"Bilan : même volume, trois débits",12,25,16,C.ink,700);
+  txt(ctx, fmil(P.vol)+" L par largage  \u00b7  nappe "+f0(P.larg)+" m  \u00b7  hauteur "+f0(P.haut)+" m",
+      1188,25,13.5,C.ink2,600,"right");
+  txt(ctx,"longueur de ligne effectivement traitée",310,60,13,C.ink3,600);
+  txt(ctx,"appliqué",830,60,13,C.ink3,600);
+  txt(ctx,"au sol",950,60,13,C.ink3,600);
+
+  sims.forEach(function(S,i){
+    var y = 76 + i*72, sol = clStrate(S,"ground"), t = teinte(sol);
+    ctx.fillStyle = C.water; rrect(ctx,12,y+2,26,22,4); ctx.fill();
+    txt(ctx, String(S.sc.n), 25, y+19, 15, "#04202f", 700, "center");
+    txt(ctx, S.sc.titre, 48, y+16, 15, C.ink, 600);
+    txt(ctx, f0(S.d.v)+" km/h  ·  ouverture "+f1(S.d.t)+" s  ·  débit "+fmil(S.d.Q)+" L/s",
+        48, y+38, 13, C.ink3, 400);
+    ctx.fillStyle = "rgba(148,163,184,0.14)"; rrect(ctx,310,y+6,450,18,4); ctx.fill();
+    ctx.fillStyle = C.water; rrect(ctx,310,y+6,Math.max(3,(S.d.L/Lmax)*450),18,4); ctx.fill();
+    txt(ctx, f0(S.d.L)+" m", 812, y+20, 14.5, C.ink, 700, "right");
+    txt(ctx, "CL "+fcl(S.d.clInc), 830, y+20, 14, C.ink2, 600);
+    txt(ctx, "CL "+fcl(sol), 950, y+20, 15, t, 700);
+    txt(ctx, sol>=3 ? "largement atteint" : (sol>=2 ? "atteint" : "manqué"),
+        1188, y+20, 13.5, t, 600, "right");
+  });
+  ctx.fillStyle = C.line; ctx.fillRect(12,296,W-24,1);
+  txt(ctx,"Le CL appliqué vaut débit / (vitesse sol × largeur). À débit égal, moitié moins vite double le CL appliqué, mais sur moitié moins de ligne.",
+      12,318,13.5,C.ink2,400);
+}
+
+/* ==============================  CAPTURE  ============================= */
+function signale(e){
+  var el = document.getElementById("erreur");
+  if(!el) return;
+  el.style.display = "block";
+  el.textContent = "Erreur du script : " + (e && e.message ? e.message : e)
+                 + "\n" + ((e && e.stack) || "");
+}
+function capture(cv, nom){
+  var m = Math.round(10*RS);
+  var t = document.createElement("canvas");
+  t.width = cv.width + 2*m; t.height = cv.height + 2*m;
+  var x = t.getContext("2d");
+  x.fillStyle = C.bg; x.fillRect(0,0,t.width,t.height);
+  x.drawImage(cv, m, m);
+  var a = document.createElement("a");
+  a.download = nom + ".png";
+  a.href = t.toDataURL("image/png");
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ================================  VUES  ============================== */
+var VUES = [], FOND = null, AVANT = null, FORET = null, bilanCv, bilanCtx, tLast = 0, tmr = 0;
+
+function creerVue(sc){
+  var zone = document.createElement("div"); zone.className = "zone";
+  var wrap = document.createElement("div"); wrap.className = "cvwrap";
+  var cv = document.createElement("canvas"); cv.className = "scene";
+  cv.width = Math.round(W*RS); cv.height = Math.round(H*RS);
+  wrap.appendChild(cv); zone.appendChild(wrap);
+  var bar = document.createElement("div"); bar.className = "cvbar";
+  var b1 = document.createElement("button"); b1.className = "primary"; b1.textContent = "Rejouer ce largage";
+  var b2 = document.createElement("button"); b2.textContent = "Capturer";
+  var sp = document.createElement("span"); sp.className = "sp";
+  bar.appendChild(b1); bar.appendChild(b2); bar.appendChild(sp);
+  zone.appendChild(bar);
+  var ctx = cv.getContext("2d"); ctx.setTransform(RS,0,0,RS,0,0);
+  var V = { sc:sc, cv:cv, ctx:ctx, F:null, fond:null, avant:null, S:null, sale:true, vu:false, vis:true };
+  b1.onclick = function(){ relance(V,true); };
+  b2.onclick = function(){
+    capture(cv, "largage-"+sc.n+"-"+sc.craft+"-"+f0(V.S.d.v)+"kmh-"
+      +f1(V.S.d.t).replace(",","-")+"s-"+P.vol+"L");
+  };
+  cv.__V = V;
+  document.getElementById("scenes").appendChild(zone);
+  return V;
+}
+function relance(V,joue){
+  V.S = newSim(V.sc); V.sale = true; V.S.joue = !!joue;
+}
+function majTout(joue){
+  majEchelle();
+  VUES.forEach(function(V){ relance(V, joue && V.vu); });
+  dessineBilan(bilanCtx, SCEN.map(function(sc){ return simuleTout(newSim(sc)); }));
+}
+function boucle(ts){
+  requestAnimationFrame(boucle);
+  var dt = tLast ? Math.min((ts-tLast)/1000, 0.08) : 0;
+  tLast = ts;
+  for(var i=0;i<VUES.length;i++){
+    var V = VUES[i], S = V.S;
+    if(!S) continue;
+    if(S.joue){
+      S.acc += dt*P.spd;
+      var n = 0;
+      while(S.acc >= FDT && !S.fini && n < 10){ pas(S,true); S.acc -= FDT; n++; }
+      if(S.fini){ S.joue = false; S.acc = 0; }
+      V.sale = true;
+    }
+    if(V.sale && V.vis) dessine(V);
+  }
+}
+
+/* ============================  COMMANDES  ============================= */
+var CTRLS = [
+  ["p-vol", "v-vol", "vol",  function(v){ return fmil(v)+" L"; }],
+  ["p-larg","v-larg","larg", function(v){ return f0(v)+" m"; }],
+  ["p-haut","v-haut","haut", function(v){ return f0(v)+" m"; }],
+  ["p-vav", "v-vav", "vav",  function(v){ return f0(v)+" km/h"; }],
+  ["p-vhe", "v-vhe", "vhe",  function(v){ return f0(v)+" km/h"; }],
+  ["p-dur", "v-dur", "dur",  function(v){ return f1(v)+" s"; }]
+];
+function syncCtrls(){
+  CTRLS.forEach(function(c){
+    var el = document.getElementById(c[0]);
+    if(!el) return;
+    el.value = P[c[2]];
+    document.getElementById(c[1]).textContent = c[3](P[c[2]]);
+  });
+  var sp = document.getElementById("p-spd"); if(sp) sp.value = String(P.spd);
+}
+function wireCtrls(){
+  CTRLS.forEach(function(c){
+    var el = document.getElementById(c[0]);
+    if(!el) return;
+    el.addEventListener("input", function(){
+      P[c[2]] = parseFloat(el.value);
+      document.getElementById(c[1]).textContent = c[3](P[c[2]]);
+      clearTimeout(tmr); tmr = setTimeout(function(){ majTout(false); }, 200);
+    });
+    el.addEventListener("change", function(){ clearTimeout(tmr); majTout(true); });
+  });
+  var sp = document.getElementById("p-spd");
+  if(sp) sp.addEventListener("change", function(){ P.spd = parseFloat(sp.value); });
+  document.getElementById("btn-all").onclick = function(){
+    VUES.forEach(function(V){ V.vu = true; }); majTout(true);
+  };
+  document.getElementById("btn-reset").onclick = function(){
+    for(var k in DEF){ if(Object.prototype.hasOwnProperty.call(DEF,k)) P[k] = DEF[k]; }
+    syncCtrls(); VUES.forEach(function(V){ V.vu = true; }); majTout(true);
+  };
+  var cb = document.querySelector('[data-cap="bilan"]');
+  if(cb) cb.onclick = function(){ capture(bilanCv, "bilan-largage-"+P.vol+"L-nappe"+P.larg+"m"); };
+}
+function observe(){
+  if(typeof IntersectionObserver === "undefined"){
+    VUES.forEach(function(V){ V.vu = true; relance(V,true); });
+    return;
+  }
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var V = e.target.__V; if(!V) return;
+      V.vis = e.isIntersecting;
+      if(e.isIntersecting){
+        V.sale = true;
+        if(!V.vu){ V.vu = true; relance(V,true); }
+      }
+    });
+  }, { threshold:0.18 });
+  VUES.forEach(function(V){ io.observe(V.cv); });
+}
+
+
+
+/* ===============================  INIT  =============================== */
+bilanCv = document.getElementById("cv-bilan");
+bilanCv.width  = Math.round(W*RS);
+bilanCv.height = Math.round(330*RS);
+bilanCtx = bilanCv.getContext("2d");
+bilanCtx.setTransform(RS,0,0,RS,0,0);
+
+buildAssets().then(function(){
+  FORET = buildForet(7);
+  FOND  = paintFond(FORET);
+  AVANT = paintAvant(FORET);
+  SCEN.forEach(function(sc){
+    var V = creerVue(sc);
+    V.F = FORET; V.fond = FOND; V.avant = AVANT;
+    VUES.push(V);
+  });
+  wireCtrls(); syncCtrls(); majEchelle();
+  VUES.forEach(function(V){ V.S = newSim(V.sc); });
+  dessineBilan(bilanCtx, SCEN.map(function(sc){ return simuleTout(newSim(sc)); }));
+  VUES.forEach(function(V){ dessine(V); });
+  observe();
+  requestAnimationFrame(boucle);
+}).catch(signale);
+
+}catch(_e){
+  var _el = document.getElementById("erreur");
+  if(_el){
+    _el.style.display = "block";
+    _el.textContent = "Erreur du script : " + (_e && _e.message ? _e.message : _e)
+                    + "\n" + ((_e && _e.stack) || "");
+  }
+}
+</script>
+</body>
+</html>

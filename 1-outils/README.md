@@ -1,6 +1,6 @@
 # Les outils
 
-Onze pages HTML autonomes. **Double-cliquez, elles s'ouvrent dans votre
+Douze pages HTML autonomes. **Double-cliquez, elles s'ouvrent dans votre
 navigateur.** Rien à installer, aucune connexion nécessaire.
 
 Elles pèsent lourd — de 300 Ko à 1,3 Mo — parce que chacune embarque tout :
@@ -17,6 +17,14 @@ défaut.
 | `profil-vol-ecopage-v18.html` | Le profil de vol d'un écopage, phase par phase | [→](../5-documentation/04-profil-vol-ecopage.md) |
 | `editeur-flotte.html` | L'outil qui fait autorité pour modifier le référentiel | [→](../5-documentation/05-editeur-flotte.md) |
 | `comparatif-ecopeurs-poids-puissance.html` | Poids, puissance et leur effet sur le cycle | [→](../5-documentation/06-comparatif-poids-puissance.md) |
+
+## `largage/` — l'eau sur le feu
+
+| Fichier | Ce qu'il montre | Fiche |
+|---|---|---|
+| `depose-eau-couvert-v1.html` | À volume égal, débit et vitesse sol décident de la concentration arrivée au sol | [→](../5-documentation/13-depose-eau-couvert.md) |
+
+Aucun import : l'outil est une illustration autonome.
 
 ## `pelicandromes/` — le ravitaillement en retardant
 
